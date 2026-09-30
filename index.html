@@ -134,15 +134,18 @@ h1{letter-spacing:-.035em}
 .category-bar>div{height:100%;background:var(--primary);border-radius:99px}
 @media(max-width:850px){.recent-overview-grid{grid-template-columns:1fr}.category-overview{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:18px}}
 @media(max-width:700px){
-  #dashboard .recent-overview-grid .table-wrap{overflow-x:visible;width:100%;}
-  #dashboard .recent-overview-grid .table{width:100%;table-layout:fixed;}
-  #dashboard .recent-overview-grid .table th,#dashboard .recent-overview-grid .table td{padding:9px 3px;font-size:11px;vertical-align:middle;}
-  #dashboard .recent-overview-grid .table th:nth-child(1),#dashboard .recent-overview-grid .table td:nth-child(1){width:38%;}
-  #dashboard .recent-overview-grid .table th:nth-child(2),#dashboard .recent-overview-grid .table td:nth-child(2){width:27%;}
-  #dashboard .recent-overview-grid .table th:nth-child(3),#dashboard .recent-overview-grid .table td:nth-child(3){width:17%;white-space:nowrap;}
+  /* Recente transacties: volledig binnen de mobiele tegel, zonder horizontaal scrollen */
+  #dashboard .recent-overview-grid{min-width:0;width:100%;}
+  #dashboard .recent-overview-grid > *{min-width:0;width:100%;}
+  #dashboard .recent-overview-grid .table-wrap{overflow:hidden;width:100%;min-width:0;}
+  #dashboard .recent-overview-grid .table{width:100%;min-width:0;max-width:100%;table-layout:fixed;}
+  #dashboard .recent-overview-grid .table th,#dashboard .recent-overview-grid .table td{padding:9px 3px;font-size:11px;vertical-align:middle;min-width:0;}
+  #dashboard .recent-overview-grid .table th:nth-child(1),#dashboard .recent-overview-grid .table td:nth-child(1){width:34%;}
+  #dashboard .recent-overview-grid .table th:nth-child(2),#dashboard .recent-overview-grid .table td:nth-child(2){width:28%;}
+  #dashboard .recent-overview-grid .table th:nth-child(3),#dashboard .recent-overview-grid .table td:nth-child(3){width:20%;white-space:nowrap;}
   #dashboard .recent-overview-grid .table th:nth-child(4),#dashboard .recent-overview-grid .table td:nth-child(4){width:18%;white-space:nowrap;text-align:right;}
   #dashboard .recent-overview-grid .table td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  #dashboard .recent-overview-grid .badge{padding:3px 5px;font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #dashboard .recent-overview-grid .badge{display:block;width:max-content;max-width:100%;padding:3px 5px;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 }
 
 /* Compacte rekeningen-tegel */
@@ -713,8 +716,8 @@ data.transactions.push({id:uid(),description,amount,date,category:"Overboeking",
 }else{
 const acc=accountById(accountId);
 if(!acc){notify("Kies een rekening.");return}
-if(kind==="expense"&&acc.balance<amount){notify("Onvoldoende saldo op deze rekening.");return}
-acc.balance+=kind==="income"?amount:-amount;
+// Gewone transacties zijn alleen registraties voor het dashboard en
+// veranderen niet de handmatig ingevoerde rekeningstand.
 data.transactions.push({id:uid(),description,amount,date,category:$("category").value,accountId,kind});
 }
 saveAndRender();
@@ -735,14 +738,9 @@ from.balance+=t.amount;to.balance-=t.amount;
 if(from.balance<n){from.balance-=t.amount;to.balance+=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
 from.balance-=n;to.balance+=n;
 }else{
-if(t.quickOnly){
+// Het wijzigen van een gewone transactie verandert alleen de transactie zelf,
+// niet de handmatig ingevoerde rekeningstand.
 t.amount=n;
-}else{
-const acc=accountById(t.accountId);if(!acc)return;
-acc.balance+=t.kind==="income"?-t.amount:t.amount;
-if(t.kind==="expense"&&acc.balance<n){acc.balance-=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
-t.amount=n;acc.balance+=t.kind==="income"?n:-n;
-}
 }
 t.amount=n;saveAndRender();
 }
@@ -750,7 +748,6 @@ function deleteTransaction(tid){
 const t=data.transactions.find(x=>x.id===tid);if(!t)return;
 if(!confirm("Deze transactie verwijderen?"))return;
 if(t.kind==="transfer"){const from=accountById(t.accountId),to=accountById(t.toAccountId);if(from)from.balance+=t.amount;if(to)to.balance-=t.amount}
-else if(!t.quickOnly){const acc=accountById(t.accountId);if(acc)acc.balance+=t.kind==="income"?-t.amount:t.amount}
 data.transactions=data.transactions.filter(x=>x.id!==tid);saveAndRender();
 }
 
