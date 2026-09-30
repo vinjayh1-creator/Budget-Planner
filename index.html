@@ -139,8 +139,8 @@ const STORAGE_KEY = "budgetPlannerV1";
 const defaultData = {
   theme:"light",
   accounts:[
-    {id:"acc1",name:"Betaalrekening",type:"betaal",balance:0,icon:"wallet"},
-    {id:"acc2",name:"Spaarrekening",type:"spaar",balance:0,icon:"piggy-bank"},
+    {id:"acc1",name:"ABN Betaalrekening",type:"betaal",balance:0,icon:"wallet"},
+    {id:"acc2",name:"ABN Spaarrekening",type:"spaar",balance:0,icon:"piggy-bank"},
     {id:"acc3",name:"Revolut Betaalrekening",type:"revolut-betaal",balance:0,icon:"credit-card"},
     {id:"acc4",name:"Revolut Spaarrekening",type:"revolut-spaar",balance:0,icon:"landmark"}
   ],
@@ -154,6 +154,11 @@ let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || structured
 let currentMonth = new Date();
 currentMonth.setDate(1);
 let activeView="dashboard";
+if(data.accounts){
+  const renameMap={"Betaalrekening":"ABN Betaalrekening","Spaarrekening":"ABN Spaarrekening"};
+  data.accounts.forEach(a=>{if(renameMap[a.name])a.name=renameMap[a.name]});
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
 
 const euro = n => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(Number(n)||0);
 const id = () => Math.random().toString(36).slice(2)+Date.now();
@@ -189,7 +194,7 @@ function renderDashboard(){
   const income=ts.filter(t=>t.kind==="income").reduce((a,t)=>a+Number(t.amount),0);
   const expenses=ts.filter(t=>t.kind==="expense").reduce((a,t)=>a+Number(t.amount),0);
   const cash=data.accounts.reduce((a,x)=>a+Number(x.balance),0);
-  const total=cash+Number(data.crypto||0);
+  const total=cash;
   const net=income-expenses;
   const days=["Ma","Di","Wo","Do","Vr","Za","Zo"];
   const week=days.map((_,i)=>({income:0,expense:0,label:days[i]}));
@@ -207,26 +212,41 @@ function renderDashboard(){
     </div>
     <div class="cards">
       <div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${euro(cash)}</div></div>
-      <div class="card"><div class="stat-label"><i data-lucide="bitcoin"></i>Crypto-inleg</div><div class="stat-value">${euro(data.crypto)}</div></div>
       <div class="card"><div class="stat-label"><i data-lucide="landmark"></i>Totaal vermogen</div><div class="stat-value">${euro(total)}</div></div>
       <div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand</div><div class="stat-value ${net>=0?"positive":"negative"}">${euro(net)}</div></div>
+      <div class="card"><div class="stat-label"><i data-lucide="bitcoin"></i>Crypto</div><div class="stat-value">Apart</div><div class="small" style="margin-top:6px">Niet meegenomen in totaal vermogen</div></div>
     </div>
     <div class="section-grid">
       <div class="card"><div class="section-title">Inkomsten & uitgaven</div>
         <div class="chart">${week.map(x=>`<div class="bar-wrap"><div style="height:${Math.max(4,x.income/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar" style="height:100%;width:100%"></div></div><div style="height:${Math.max(4,x.expense/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar out" style="height:100%;width:100%"></div></div><div class="bar-label">${x.label}</div></div>`).join("")}</div>
         <div class="small" style="margin-top:8px"><span class="positive">● Inkomsten</span> &nbsp; <span class="negative">● Uitgaven</span></div>
       </div>
-      <div class="card"><div class="section-title">Vermogen <span class="small">Geld + crypto</span></div>
-        <div class="account-list">${data.accounts.map(a=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="${a.icon}"></i></div><div>${a.name}</div></div><div class="amount">${euro(a.balance)}</div></div>`).join("")}
-        <div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="bitcoin"></i></div><div>Crypto-inleg</div></div><div class="amount">${euro(data.crypto)}</div></div></div>
+      <div class="card"><div class="section-title">Vermogen <span class="small">Alleen bankrekeningen</span></div>
+        <div class="account-list">${data.accounts.map(a=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="${a.icon}"></i></div><div>${a.name}</div></div><div class="amount">${euro(a.balance)}</div></div>`).join("")}</div>
       </div>
     </div>
+    <div class="card" style="margin-top:15px">
+      <div class="section-title">
+        <span>Crypto</span>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)">
+          <input type="checkbox" id="showCryptoDashboard"> Tonen op dashboard
+        </label>
+      </div>
+      <div id="dashboardCrypto" class="small">Crypto is apart van je bankvermogen en wordt niet meegenomen in totaal vermogen.</div>
+    </div>
     <div class="card transactions"><div class="section-title">Recente transacties <button class="btn primary" id="quickAdd"><i data-lucide="plus"></i>Toevoegen</button></div>
-      ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td class="${t.kind==="income"?"positive":"negative"}">${t.kind==="income"?"+":"-"}${euro(t.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
+      ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td class="${t.kind==="income"?"positive":t.kind==="transfer"?"":"negative"}">${t.kind==="income"?"+":t.kind==="transfer"?"↔":"-"}${euro(t.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
     </div>`;
   document.getElementById("prevMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()-1);render()};
   document.getElementById("nextMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()+1);render()};
   document.getElementById("quickAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>document.getElementById("description")?.focus(),0)};
+  const cryptoToggle=document.getElementById("showCryptoDashboard");
+  const cryptoBox=document.getElementById("dashboardCrypto");
+  cryptoToggle.onchange=()=>{
+    cryptoBox.innerHTML=cryptoToggle.checked
+      ? `<div style="display:flex;justify-content:space-between;align-items:center"><span>Crypto-inleg</span><strong>${euro(data.crypto)}</strong></div><div class="small" style="margin-top:6px">Dit bedrag staat los van je totaal bankvermogen.</div>`
+      : `Crypto is apart van je bankvermogen en wordt niet meegenomen in totaal vermogen.`;
+  };
 }
 
 function renderTransactions(){
@@ -236,28 +256,55 @@ function renderTransactions(){
     <div class="card">
       <div class="section-title">Nieuwe transactie</div>
       <form id="transactionForm">
-        <div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button></div>
+        <div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button><button type="button" data-kind="transfer">Overboeking</button></div>
         <div class="form-grid">
           <div class="field"><label>Omschrijving</label><input id="description" required placeholder="Bijv. Boodschappen"></div>
           <div class="field"><label>Bedrag (€)</label><input id="amount" required type="number" min="0" step="0.01" placeholder="0,00"></div>
           <div class="field"><label>Datum</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}" required></div>
           <div class="field"><label>Categorie</label><select id="category">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div>
-          <div class="field"><label>Rekening</label><select id="account">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
+          <div class="field"><label id="accountLabel">Rekening</label><select id="account">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
+          <div class="field" id="transferField" style="display:none"><label>Geld naar</label><select id="transferTo">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
         </div>
         <div class="form-actions"><button class="btn primary" type="submit"><i data-lucide="plus"></i>Transactie toevoegen</button></div>
       </form>
     </div>
     <div class="card transactions"><div class="section-title">Transacties</div>
-      ${ts.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Rekening</th><th>Bedrag</th><th></th></tr></thead><tbody>${ts.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td>${esc(data.accounts.find(a=>a.id===t.accountId)?.name||"-")}</td><td class="${t.kind==="income"?"positive":"negative"}">${t.kind==="income"?"+":"-"}${euro(t.amount)}</td><td><div class="actions"><button onclick="editTransaction('${t.id}')" title="Bewerken"><i data-lucide="pencil"></i></button><button onclick="deleteTransaction('${t.id}')" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties.</div>`}
+      ${ts.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Rekening</th><th>Bedrag</th><th></th></tr></thead><tbody>${ts.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td>${esc(data.accounts.find(a=>a.id===t.accountId)?.name||"-")}</td><td class="${t.kind==="income"?"positive":t.kind==="transfer"?"":"negative"}">${t.kind==="income"?"+":t.kind==="transfer"?"↔":"-"}${euro(t.amount)}</td><td><div class="actions"><button onclick="editTransaction('${t.id}')" title="Bewerken"><i data-lucide="pencil"></i></button><button onclick="deleteTransaction('${t.id}')" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties.</div>`}
     </div>`;
   let kind="expense";
-  document.querySelectorAll("#transactionForm .toggle button").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;document.querySelectorAll("#transactionForm .toggle button").forEach(x=>x.classList.toggle("active",x===b))});
+  const transferField=document.getElementById("transferField");
+  const categoryField=document.getElementById("category").parentElement;
+  const accountLabel=document.getElementById("accountLabel");
+  document.querySelectorAll("#transactionForm .toggle button").forEach(b=>b.onclick=()=>{
+    kind=b.dataset.kind;
+    document.querySelectorAll("#transactionForm .toggle button").forEach(x=>x.classList.toggle("active",x===b));
+    const isTransfer=kind==="transfer";
+    transferField.style.display=isTransfer?"block":"none";
+    categoryField.style.display=isTransfer?"none":"block";
+    accountLabel.textContent=isTransfer?"Van rekening":"Rekening";
+  });
   document.getElementById("transactionForm").onsubmit=e=>{
     e.preventDefault();
-    const t={id:id(),description:description.value,amount:Number(amount.value),date:date.value,category:category.value,accountId:account.value,kind};
-    const acc=data.accounts.find(a=>a.id===t.accountId);
-    if(acc) acc.balance += kind==="income"?t.amount:-t.amount;
-    data.transactions.push(t);save();
+    const amountValue=Number(amount.value);
+    if(!amountValue || amountValue<0)return;
+    if(kind==="transfer"){
+      const from=data.accounts.find(a=>a.id===account.value);
+      const to=data.accounts.find(a=>a.id===transferTo.value);
+      if(!from||!to||from.id===to.id){alert("Kies twee verschillende rekeningen.");return}
+      if(from.balance < amountValue){alert("Onvoldoende saldo op de bronrekening.");return}
+      from.balance-=amountValue;
+      to.balance+=amountValue;
+      data.transactions.push({
+        id:id(),description:description.value||"Overboeking",amount:amountValue,date:date.value,
+        category:"Overboeking",accountId:from.id,toAccountId:to.id,kind:"transfer"
+      });
+    } else {
+      const t={id:id(),description:description.value,amount:amountValue,date:date.value,category:category.value,accountId:account.value,kind};
+      const acc=data.accounts.find(a=>a.id===t.accountId);
+      if(acc) acc.balance += kind==="income"?t.amount:-t.amount;
+      data.transactions.push(t);
+    }
+    save();
   };
 }
 
@@ -323,17 +370,33 @@ function editTransaction(tid){
   const t=data.transactions.find(x=>x.id===tid); if(!t)return;
   const newAmount=prompt("Bedrag (€):",t.amount); if(newAmount===null)return;
   const n=Number(newAmount); if(isNaN(n)||n<0)return;
-  const acc=data.accounts.find(a=>a.id===t.accountId);
-  if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
-  t.amount=n;
-  if(acc) acc.balance += t.kind==="income"?t.amount:-t.amount;
-  save();
+  if(t.kind==="transfer"){
+    const from=data.accounts.find(a=>a.id===t.accountId);
+    const to=data.accounts.find(a=>a.id===t.toAccountId);
+    if(from) from.balance+=t.amount;
+    if(to) to.balance-=t.amount;
+    if(!from||!to||from.balance<n){alert("Onvoldoende saldo voor deze wijziging.");if(from)from.balance-=t.amount;if(to)to.balance+=t.amount;return}
+    from.balance-=n; to.balance+=n;
+  } else {
+    const acc=data.accounts.find(a=>a.id===t.accountId);
+    if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
+    t.amount=n;
+    if(acc) acc.balance += t.kind==="income"?t.amount:-t.amount;
+  }
+  t.amount=n; save();
 }
 function deleteTransaction(tid){
   const t=data.transactions.find(x=>x.id===tid); if(!t)return;
   if(!confirm("Deze transactie verwijderen?"))return;
-  const acc=data.accounts.find(a=>a.id===t.accountId);
-  if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
+  if(t.kind==="transfer"){
+    const from=data.accounts.find(a=>a.id===t.accountId);
+    const to=data.accounts.find(a=>a.id===t.toAccountId);
+    if(from) from.balance+=t.amount;
+    if(to) to.balance-=t.amount;
+  } else {
+    const acc=data.accounts.find(a=>a.id===t.accountId);
+    if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
+  }
   data.transactions=data.transactions.filter(x=>x.id!==tid);save();
 }
 function deleteBudget(i){if(confirm("Budget verwijderen?")){data.budgets.splice(i,1);save()}}
