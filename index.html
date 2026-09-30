@@ -747,7 +747,7 @@ const startDate=new Date(2026,8,1); // eerste stand: 1-09-2026
 const now=new Date();
 const current=new Date(now.getFullYear(),now.getMonth(),1);
 
-// Vanaf 1-10-2026 tonen we iedere maand vooruit.
+// Vanaf 1-09-2026 tonen we iedere maand vooruit.
 const endDate=new Date(Math.max(startDate.getTime(),current.getTime()));
 endDate.setMonth(endDate.getMonth()+12);
 
@@ -761,7 +761,7 @@ const val=(k,id)=>Number(data.accountSnapshots?.[k]?.[id]||0);
 const accounts=[["acc1","ABN Amro"],["acc4","Revolut"]];
 
 // Standaard alleen de huidige beschikbare maand tonen.
-// Zolang de kalenderdatum vóór oktober 2026 ligt, gebruiken we 1-10-2026 als eerste beschikbare maand.
+// Zolang de kalenderdatum vóór september 2026 ligt, gebruiken we 1-09-2026 als eerste beschikbare maand.
 const currentKey=key(new Date(Math.max(startDate.getTime(),current.getTime())));
 if(!selectedSnapshotMonth || !months.some(d=>key(d)===selectedSnapshotMonth)){
   selectedSnapshotMonth=currentKey;
@@ -789,6 +789,7 @@ ${months.map(d=>`<option value="${key(d)}" ${key(d)===selectedKey?"selected":""}
 <div class="snapshot-month">
 <div class="snapshot-month-head"><strong>${label(selectedDate)}</strong><span class="small">${selectedDate.toLocaleDateString("nl-NL",{month:"long",year:"numeric"})}</span></div>
 ${accounts.map(a=>`<div class="snapshot-row"><span>${a[1]}</span><div class="snapshot-input-wrap"><span>€</span><input type="number" min="0" step="0.01" inputmode="decimal" data-snapshot-month="${selectedKey}" data-snapshot-account="${a[0]}" value="${val(selectedKey,a[0])||""}" placeholder="0,00"></div></div>`).join("")}
+<button class="btn primary snapshot-save-btn" id="saveSnapshotBtn" style="margin-top:10px;width:100%">Opslaan</button>
 <div class="snapshot-total"><span>Totaal</span><strong>${euro(total)}</strong></div>
 ${prev?`<div class="snapshot-diff"><span>Verschil</span><strong class="${total-prevTotal>=0?"positive":"negative"}">${total-prevTotal>=0?"+":""}${euro(total-prevTotal)}</strong></div>`:""}
 </div>
@@ -799,12 +800,18 @@ $("snapshotMonthSelect").onchange=()=>{
   renderAccounts();
 };
 
-document.querySelectorAll("[data-snapshot-month]").forEach(input=>input.onchange=()=>{
+$("saveSnapshotBtn").onclick=()=>{
+const inputs=document.querySelectorAll("[data-snapshot-month]");
+inputs.forEach(input=>{
 const k=input.dataset.snapshotMonth,id=input.dataset.snapshotAccount;
 data.accountSnapshots[k]=data.accountSnapshots[k]||{};
 data.accountSnapshots[k][id]=Number(String(input.value).replace(",", "."))||0;
-saveData(); renderAccounts(); renderDashboard();
 });
+saveData();
+renderAccounts();
+renderDashboard();
+notify("Stand opgeslagen.");
+};
 lucide.createIcons();
 }
 
