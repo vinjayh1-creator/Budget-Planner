@@ -254,6 +254,53 @@ h1{letter-spacing:-.035em}
     margin-top: 16px;
   }
 }
+
+<style>
+.cash-visibility-toggle{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  width:30px;
+  height:30px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  cursor:pointer;
+  margin-left:4px;
+}
+.cash-visibility-toggle:hover{background:var(--soft);color:var(--text)}
+.cash-stat-row{display:flex;align-items:center;gap:2px}
+<style>
+.amount-visibility-toggle{
+  width:28px;height:28px;padding:0;border:1px solid var(--border);
+  background:var(--card);color:var(--muted);border-radius:7px;
+  display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;flex:0 0 auto;
+}
+.amount-visibility-toggle svg{width:15px;height:15px}
+.amount-visibility-toggle:hover{color:var(--text);background:var(--soft)}
+<style>
+.icon-btn{
+  width:28px !important;
+  height:28px !important;
+  min-width:28px !important;
+  min-height:28px !important;
+  padding:0 !important;
+  border-radius:7px !important;
+}
+.icon-btn svg{width:15px !important;height:15px !important}
+.backup-btn{
+  width:28px !important;
+  height:28px !important;
+  min-width:28px !important;
+  min-height:28px !important;
+  padding:0 !important;
+  border-radius:7px !important;
+}
+.backup-btn svg{width:15px !important;height:15px !important}
+</style></style></style>
 </style>
 </head>
 <body>
@@ -275,7 +322,7 @@ h1{letter-spacing:-.035em}
     <button class="theme-btn" id="backupRestore"><i data-lucide="upload"></i><span>Backup herstellen</span></button>
     <input type="file" id="backupFile" accept=".json,application/json" style="display:none">
   </div>
-  <button class="theme-btn" id="themeBtn"><i data-lucide="moon"></i><span>Licht/donker</span></button>
+  <button class="theme-btn" id="themeBtn"><i data-lucide="moon"></i><span>Licht/donker</span></button><button class="amount-visibility-toggle" id="toggleAmountsVisibility" title="Bedragen tonen" aria-label="Bedragen tonen"><i data-lucide="eye"></i></button>
 </div>
 </aside>
 <main>
@@ -283,7 +330,7 @@ h1{letter-spacing:-.035em}
   <div class="brand"><i data-lucide="wallet"></i>Budget Planner</div>
   <div style="display:flex;gap:7px;align-items:center">
     <button class="icon-btn" id="mobileBackup" title="Backup"><i data-lucide="hard-drive-download"></i></button>
-    <button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button>
+    <button class="icon-btn amount-visibility-toggle" id="mobileToggleAmounts" title="Bedragen tonen" aria-label="Bedragen tonen"><i data-lucide="eye"></i></button><button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button>
   </div>
 </div>
 <div id="mobileBackupMenu" style="display:none;position:fixed;top:62px;right:14px;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:8px;box-shadow:var(--shadow);min-width:190px">
@@ -369,11 +416,13 @@ return d;
 }
 let data=loadData();
 let activeView="dashboard";
+let amountsVisible=true;
 let currentMonth=new Date();
 currentMonth.setDate(1);
 
 const $=id=>document.getElementById(id);
 const euro=n=>new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(Number(n)||0);
+const protectedEuro=n=>amountsVisible?euro(n):"••••••";
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 const dateKey=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`};
@@ -459,16 +508,16 @@ $("dashboard").innerHTML=`
 <div class="topbar"><div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
 <div class="month-nav"><button class="icon-btn" id="prevMonth"><i data-lucide="chevron-left"></i></button><strong style="min-width:145px;text-align:center;text-transform:capitalize">${monthName()}</strong><button class="icon-btn" id="nextMonth"><i data-lucide="chevron-right"></i></button></div></div>
 <div class="cards">
-<div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${euro(cash)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="arrow-down-left"></i>Deze maand binnen</div><div class="stat-value positive">${euro(income)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="arrow-up-right"></i>Deze maand eruit</div><div class="stat-value negative">${euro(expenses)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand saldo</div><div class="stat-value ${net>=0?"positive":"negative"}">${euro(net)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${protectedEuro(cash)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="arrow-down-left"></i>Deze maand binnen</div><div class="stat-value positive">${protectedEuro(income)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="arrow-up-right"></i>Deze maand eruit</div><div class="stat-value negative">${protectedEuro(expenses)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand saldo</div><div class="stat-value ${net>=0?"positive":"negative"}">${protectedEuro(net)}</div></div>
 </div>
 </div>
 <div class="section-grid">
 <div class="card"><div class="section-title">Rekeningen</div><div class="small" style="margin-bottom:9px">Stand ${dashboardSnapshotLabel}</div><div class="account-list">
-<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="landmark"></i></div><div>ABN Amro</div></div><div class="amount">${euro(dashboardSnapshot.acc1||0)}</div></div>
-<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="wallet"></i></div><div>Revolut</div></div><div class="amount">${euro(dashboardSnapshot.acc4||0)}</div></div>
+<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="landmark"></i></div><div>ABN Amro</div></div><div class="amount">${protectedEuro(dashboardSnapshot.acc1||0)}</div></div>
+<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="wallet"></i></div><div>Revolut</div></div><div class="amount">${protectedEuro(dashboardSnapshot.acc4||0)}</div></div>
 </div></div>
 </div>
 <div class="card transactions"><div class="section-title">Snelle uitgave</div>
@@ -519,15 +568,37 @@ $("dashboard").innerHTML=`
 <div class="section-title"><span style="display:flex;align-items:center;gap:8px"><i data-lucide="shopping-bag"></i>DealPlugNL</span><span class="badge">Business</span></div>
 <div class="small">Overzicht van verkopen en kosten</div>
 <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px">
-<div><div class="small">Huidige stand</div><div class="stat-value ${dpBalance>=0?"positive":"negative"}" style="margin-top:3px">${euro(dpBalance)}</div></div>
-<div style="text-align:right"><div class="small">Resultaat</div><div class="${(dpIncome-dpCosts)>=0?"positive":"negative"}" style="font-size:16px;font-weight:650;margin-top:3px">${(dpIncome-dpCosts)>=0?"+":""}${euro(dpIncome-dpCosts)}</div></div>
+<div><div class="small">Huidige stand</div><div class="stat-value ${dpBalance>=0?"positive":"negative"}" style="margin-top:3px">${protectedEuro(dpBalance)}</div></div>
+<div style="text-align:right"><div class="small">Resultaat</div><div class="${(dpIncome-dpCosts)>=0?"positive":"negative"}" style="font-size:16px;font-weight:650;margin-top:3px">${(dpIncome-dpCosts)>=0?"+":""}${protectedEuro(dpIncome-dpCosts)}</div></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
-<div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--soft)"><div class="small">Verkopen</div><div class="positive" style="font-weight:600;margin-top:3px">${euro(dpIncome)}</div></div>
-<div style="padding:10px;border:1px solid var(--border);border-radius:12px"><div class="small">Kosten</div><div class="negative" style="font-weight:600;margin-top:3px">${euro(dpCosts)}</div></div>
+<div style="padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--soft)"><div class="small">Verkopen</div><div class="positive" style="font-weight:600;margin-top:3px">${protectedEuro(dpIncome)}</div></div>
+<div style="padding:10px;border:1px solid var(--border);border-radius:12px"><div class="small">Kosten</div><div class="negative" style="font-weight:600;margin-top:3px">${protectedEuro(dpCosts)}</div></div>
 </div>
 <div style="margin-top:13px;height:6px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:${dpIncome>0?Math.min(100,Math.max(0,(dpIncome-dpCosts)/dpIncome*100)):0}%;background:var(--primary);border-radius:99px"></div></div>
 <div class="small" style="margin-top:6px">Netto na kosten</div>`;
+const updateAmountVisibilityButtons=()=>{
+  const icon=amountsVisible?"eye-off":"eye";
+  const label=amountsVisible?"Bedragen verbergen":"Bedragen tonen";
+  ["toggleAmountsVisibility","mobileToggleAmounts"].forEach(id=>{
+    const el=$(id);
+    if(!el)return;
+    el.innerHTML=`<i data-lucide="${icon}"></i>`;
+    el.title=label;
+    el.setAttribute("aria-label",label);
+  });
+  lucide.createIcons();
+};
+const toggleAllAmounts=()=>{
+  amountsVisible=!amountsVisible;
+  updateAmountVisibilityButtons();
+  renderDashboard();
+  if(typeof renderCrypto==="function") renderCrypto();
+  if(typeof renderDealPlug==="function") renderDealPlug();
+  if(typeof renderAccounts==="function") renderAccounts();
+};
+$("toggleAmountsVisibility").onclick=toggleAllAmounts;
+$("mobileToggleAmounts").onclick=toggleAllAmounts;
 $("dashboardAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>$("description")?.focus(),0)};
 document.querySelectorAll("[data-quick-expense]").forEach(btn=>btn.onclick=()=>{
 const category=btn.dataset.quickExpense;
@@ -785,19 +856,19 @@ function renderCrypto(){
     <div class="cards">
       <div class="card">
         <div class="stat-label"><i data-lucide="arrow-down-left"></i>Totale inleg</div>
-        <div class="stat-value">${euro(cryptoInvested)}</div>
+        <div class="stat-value">${protectedEuro(cryptoInvested)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="arrow-up-right"></i>Uitgecasht</div>
-        <div class="stat-value">${euro(cryptoCashouts)}</div>
+        <div class="stat-value">${protectedEuro(cryptoCashouts)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="${cryptoResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
-        <div class="stat-value ${cryptoResult>=0?"positive":"negative"}">${cryptoResult>=0?"+":""}${euro(cryptoResult)}</div>
+        <div class="stat-value ${cryptoResult>=0?"positive":"negative"}">${cryptoResult>=0?"+":""}${protectedEuro(cryptoResult)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="coins"></i>Nog in crypto</div>
-        <div class="stat-value">${euro(cryptoOpen)}</div>
+        <div class="stat-value">${protectedEuro(cryptoOpen)}</div>
       </div>
     </div>
 
@@ -845,7 +916,7 @@ function renderCrypto(){
             <td>${esc(e.description||"Crypto")}</td>
             <td>${new Date(e.date).toLocaleDateString("nl-NL")}</td>
             <td>${e.type==="in"?"Inleg":"Uitcashen"}</td>
-            <td class="${e.type==="in"?"negative":"positive"}">${e.type==="in"?"-":"+"}${euro(e.amount)}</td>
+            <td class="${e.type==="in"?"negative":"positive"}">${e.type==="in"?"-":"+"}${protectedEuro(e.amount)}</td>
           </tr>`).join("")}
         </tbody>
       </table></div>`:`<div class="empty">Nog geen crypto-transacties.</div>`}
@@ -856,19 +927,19 @@ function renderCrypto(){
     <div class="cards">
       <div class="card">
         <div class="stat-label"><i data-lucide="arrow-down-left"></i>Totale inleg</div>
-        <div class="stat-value">${euro(pokemonInvested)}</div>
+        <div class="stat-value">${protectedEuro(pokemonInvested)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="arrow-up-right"></i>Verkocht / uitgecasht</div>
-        <div class="stat-value">${euro(pokemonCashouts)}</div>
+        <div class="stat-value">${protectedEuro(pokemonCashouts)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="${pokemonResult>=0?"trending-up":"trending-down"}"></i>Gerealiseerd resultaat</div>
-        <div class="stat-value ${pokemonResult>=0?"positive":"negative"}">${pokemonResult>=0?"+":""}${euro(pokemonResult)}</div>
+        <div class="stat-value ${pokemonResult>=0?"positive":"negative"}">${pokemonResult>=0?"+":""}${protectedEuro(pokemonResult)}</div>
       </div>
       <div class="card">
         <div class="stat-label"><i data-lucide="layers"></i>Nog in Pokémon</div>
-        <div class="stat-value">${euro(pokemonOpen)}</div>
+        <div class="stat-value">${protectedEuro(pokemonOpen)}</div>
       </div>
     </div>
 
@@ -916,7 +987,7 @@ function renderCrypto(){
             <td>${esc(e.description||"Pokémon")}</td>
             <td>${new Date(e.date).toLocaleDateString("nl-NL")}</td>
             <td>${e.type==="in"?"Inleg":"Verkoop"}</td>
-            <td class="${e.type==="in"?"negative":"positive"}">${e.type==="in"?"-":"+"}${euro(e.amount)}</td>
+            <td class="${e.type==="in"?"negative":"positive"}">${e.type==="in"?"-":"+"}${protectedEuro(e.amount)}</td>
           </tr>`).join("")}
         </tbody>
       </table></div>`:`<div class="empty">Nog geen Pokémon-transacties.</div>`}
@@ -982,7 +1053,7 @@ function renderBudgets(){
 const ts=monthTransactions();
 $("budgets").innerHTML=`<div class="topbar"><div><h1>Budgetten</h1><div class="subtitle">Maandbudgetten voor ${monthName()}</div></div></div>
 <div class="card"><div class="section-title">Budget toevoegen</div><form id="budgetForm"><div class="form-grid"><div class="field"><label>Categorie</label><select id="budgetCat">${categories.filter(c=>!["Salaris","Freelance"].includes(c)).map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Budget per maand (€)</label><input id="budgetAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Budget opslaan</button></div></form></div>
-<div class="card transactions"><div class="section-title">Jouw budgetten</div>${data.budgets.length?data.budgets.map((b,i)=>{const spent=ts.filter(t=>t.kind==="expense"&&t.category===b.category).reduce((s,t)=>s+Number(t.amount),0);const pct=b.amount>0?Math.min(100,spent/b.amount*100):0;return `<div class="goal"><div class="goal-top"><strong>${esc(b.category)}</strong><span>${euro(spent)} / ${euro(b.amount)}</span></div><div class="progress"><div style="width:${pct}%"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px" class="small"><span>${pct.toFixed(0)}% gebruikt</span><button class="icon-btn danger" data-budget-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen budgetten ingesteld.</div>`}</div>`;
+<div class="card transactions"><div class="section-title">Jouw budgetten</div>${data.budgets.length?data.budgets.map((b,i)=>{const spent=ts.filter(t=>t.kind==="expense"&&t.category===b.category).reduce((s,t)=>s+Number(t.amount),0);const pct=b.amount>0?Math.min(100,spent/b.amount*100):0;return `<div class="goal"><div class="goal-top"><strong>${esc(b.category)}</strong><span>${protectedEuro(spent)} / ${protectedEuro(b.amount)}</span></div><div class="progress"><div style="width:${pct}%"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px" class="small"><span>${pct.toFixed(0)}% gebruikt</span><button class="icon-btn danger" data-budget-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen budgetten ingesteld.</div>`}</div>`;
 $("budgetForm").onsubmit=e=>{e.preventDefault();const amount=Number($("budgetAmount").value);if(!Number.isFinite(amount)||amount<=0){notify("Vul een geldig budget in.");return}data.budgets.push({category:$("budgetCat").value,amount});saveAndRender()};
 document.querySelectorAll("[data-budget-delete]").forEach(b=>b.onclick=()=>{if(confirm("Budget verwijderen?")){data.budgets.splice(Number(b.dataset.budgetDelete),1);saveAndRender()}});
 }
@@ -994,10 +1065,10 @@ const costs=entries.filter(e=>e.kind==="expense").reduce((s,e)=>s+Number(e.amoun
 const balance=Number(data.dealplug.opening)+income-costs;
 $("dealplug").innerHTML=`
 <div class="topbar"><div><h1>DealPlugNL</h1><div class="subtitle">Inkomsten en kosten van je abonnementen</div></div></div>
-<div class="cards"><div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beginstand</div><div class="stat-value">${euro(data.dealplug.opening)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="arrow-down-left"></i>Inkomsten</div><div class="stat-value positive">${euro(income)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="arrow-up-right"></i>Kosten</div><div class="stat-value negative">${euro(costs)}</div></div>
-<div class="card"><div class="stat-label"><i data-lucide="calculator"></i>Huidige stand</div><div class="stat-value ${balance>=0?"positive":"negative"}">${euro(balance)}</div></div></div>
+<div class="cards"><div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beginstand</div><div class="stat-value">${protectedEuro(data.dealplug.opening)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="arrow-down-left"></i>Inkomsten</div><div class="stat-value positive">${protectedEuro(income)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="arrow-up-right"></i>Kosten</div><div class="stat-value negative">${protectedEuro(costs)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="calculator"></i>Huidige stand</div><div class="stat-value ${balance>=0?"positive":"negative"}">${protectedEuro(balance)}</div></div></div>
 <div class="card"><div class="section-title">Beginstand instellen</div><div class="form-grid"><div class="field"><label>Beginstand (€)</label><input id="dpOpening" type="number" step=".01" inputmode="decimal" value="${Number(data.dealplug.opening).toFixed(2)}"></div></div><div class="form-actions"><button class="btn primary" id="saveDpOpening"><i data-lucide="save"></i>Beginstand opslaan</button></div></div>
 <div class="card"><div class="section-title">Inkomsten / kosten toevoegen</div><form id="dpForm"><div class="toggle"><button type="button" data-dpkind="income" class="active">Inkomst</button><button type="button" data-dpkind="expense">Kosten</button></div>
 <div class="form-grid"><div class="field"><label>Omschrijving</label><input id="dpDesc" required placeholder="Bijv. Spotify Premium"></div><div class="field"><label>Bedrag (€)</label><input id="dpAmount" required type="number" min="0.01" step=".01" inputmode="decimal"></div><div class="field"><label>Datum</label><input id="dpDate" type="date" value="${today()}" required></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Toevoegen</button></div></form></div>
