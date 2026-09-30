@@ -1,485 +1,389 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0f172a">
-  <title>Budget Planner</title>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <style>
-    :root {
-      --bg:#f4f7fb; --card:#fff; --text:#172033; --muted:#6b7280;
-      --border:#e5e7eb; --primary:#4f46e5; --primary-soft:#eef2ff;
-      --green:#059669; --red:#dc2626; --yellow:#d97706; --shadow:0 8px 30px rgba(15,23,42,.07);
-    }
-    [data-theme="dark"] {
-      --bg:#0b1120; --card:#111827; --text:#f3f4f6; --muted:#9ca3af;
-      --border:#243044; --primary:#818cf8; --primary-soft:#1e1b4b;
-      --green:#34d399; --red:#f87171; --yellow:#fbbf24; --shadow:0 8px 30px rgba(0,0,0,.25);
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    button,input,select{font:inherit}
-    button{cursor:pointer}
-    .app{display:flex;min-height:100vh}
-    aside{width:245px;background:var(--card);border-right:1px solid var(--border);padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:10}
-    .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;padding:6px 10px 24px}
-    .brand i{color:var(--primary)}
-    nav button{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:0;background:transparent;color:var(--muted);border-radius:10px;text-align:left;margin:3px 0}
-    nav button:hover,nav button.active{background:var(--primary-soft);color:var(--primary);font-weight:650}
-    .bottom-tools{position:absolute;bottom:20px;left:14px;right:14px}
-    .theme-btn{width:100%;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
-    main{margin-left:245px;width:calc(100% - 245px);padding:28px;max-width:1500px}
-    .mobile-head{display:none}
-    .site-controls{display:flex;justify-content:flex-end;margin-bottom:12px}
-    .global-toggle{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--card);padding:7px 10px;border-radius:10px;color:var(--text);font-size:13px;cursor:pointer;box-shadow:var(--shadow)}
-    .global-toggle>span:first-child{display:flex;align-items:center;gap:6px}
-    .global-toggle input{display:none}
-    .toggle-track{width:36px;height:20px;border-radius:99px;background:var(--border);padding:2px;transition:.2s}
-    .toggle-thumb{display:block;width:16px;height:16px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-    .global-toggle input:checked + .toggle-track{background:var(--primary)}
-    .global-toggle input:checked + .toggle-track .toggle-thumb{transform:translateX(16px)}
-    .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-    .quick-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px;text-align:left}
-    .quick-btn strong{display:block;font-size:13px}
-    .quick-btn span{font-size:11px;color:var(--muted)}
-    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;gap:15px}
-    h1{font-size:28px;margin:0 0 5px}
-    .subtitle{color:var(--muted);font-size:14px}
-    .month-nav{display:flex;align-items:center;gap:8px}
-    .icon-btn,.btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 11px;display:inline-flex;align-items:center;gap:8px}
-    .btn.primary{background:var(--primary);border-color:var(--primary);color:white}
-    .icon-btn:hover,.btn:hover{filter:brightness(.97)}
-    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:19px;box-shadow:var(--shadow)}
-    .stat-label{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}
-    .stat-value{font-size:25px;font-weight:800;margin-top:9px}
-    .positive{color:var(--green)} .negative{color:var(--red)}
-    .section-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:15px;margin-top:15px}
-    .section-title{font-size:16px;font-weight:750;margin:0 0 16px;display:flex;justify-content:space-between;align-items:center}
-    .account-list{display:grid;gap:10px}
-    .account{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:12px}
-    .account-left{display:flex;align-items:center;gap:12px}
-    .account-icon{width:38px;height:38px;border-radius:10px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center}
-    .small{font-size:12px;color:var(--muted)}
-    .amount{font-weight:750}
-    .chart{height:240px;display:flex;align-items:flex-end;gap:10px;padding:10px 3px 0}
-    .bar-wrap{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px}
-    .bar{width:100%;max-width:42px;border-radius:7px 7px 2px 2px;background:var(--primary);min-height:4px}
-    .bar.out{background:var(--red)}
-    .bar-label{font-size:10px;color:var(--muted)}
-    .transactions{margin-top:15px}
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{padding:13px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}
-    .table th{color:var(--muted);font-weight:600}
-    .badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:11px}
-    .actions{display:flex;gap:5px}
-    .actions button{border:0;background:transparent;color:var(--muted);padding:5px}
-    .view{display:none}.view.active{display:block}
-    .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
-    .field input,.field select{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);outline:none}
-    .field input:focus,.field select:focus{border-color:var(--primary)}
-    .form-actions{margin-top:15px;display:flex;gap:8px}
-    .empty{text-align:center;color:var(--muted);padding:28px 10px}
-    .goal{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}
-    .goal-top{display:flex;justify-content:space-between;gap:10px}
-    .progress{height:8px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:12px}
-    .progress>div{height:100%;background:var(--primary);border-radius:99px}
-    .toggle{display:flex;gap:8px;margin-bottom:15px}
-    .toggle button{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:10px}
-    .toggle button.active{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
-    .notice{padding:12px;border-radius:10px;background:var(--primary-soft);color:var(--text);font-size:13px;margin-bottom:15px}
-    .danger{color:var(--red)!important}
-    @media(max-width:950px){.cards{grid-template-columns:repeat(2,1fr)}.section-grid{grid-template-columns:1fr}}
-    @media(max-width:700px){
-      aside{display:none}.app{display:block}main{margin:0;width:100%;padding:16px 14px 85px}
-      .mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
-      .mobile-head .brand{padding:0;font-size:18px}
-      .topbar{display:block}.topbar h1{font-size:23px}.month-nav{margin-top:12px}
-      .cards{grid-template-columns:1fr 1fr;gap:10px}.card{padding:14px;border-radius:13px}.stat-value{font-size:19px}
-      .quick-grid{grid-template-columns:1fr 1fr}
-      .table-wrap{overflow-x:auto}.table{min-width:650px}
-      .bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:20;padding:7px 4px}
-      .bottom-nav button{border:0;background:transparent;color:var(--muted);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px}
-      .bottom-nav button.active{color:var(--primary)}
-    }
-    @media(min-width:701px){.bottom-nav{display:none}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Budget Planner</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--border:#e5e7eb;--primary:#4f46e5;--soft:#eef2ff;--green:#059669;--red:#dc2626;--yellow:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}
+[data-theme=dark]{--bg:#0b1120;--card:#111827;--text:#f3f4f6;--muted:#9ca3af;--border:#243044;--primary:#818cf8;--soft:#1e1b4b;--green:#34d399;--red:#f87171;--yellow:#fbbf24;--shadow:0 8px 30px rgba(0,0,0,.25)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer}
+.app{display:flex;min-height:100vh}aside{width:245px;background:var(--card);border-right:1px solid var(--border);padding:22px 14px;position:fixed;inset:0 auto 0 0;z-index:10}.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;padding:6px 10px 24px}.brand svg{color:var(--primary)}
+nav button{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:0;background:transparent;color:var(--muted);border-radius:10px;text-align:left;margin:3px 0}nav button:hover,nav button.active{background:var(--soft);color:var(--primary);font-weight:650}
+.bottom-tools{position:absolute;bottom:20px;left:14px;right:14px}.theme-btn{width:100%;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
+main{margin-left:245px;width:calc(100% - 245px);padding:28px;max-width:1500px}.mobile-head{display:none}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;gap:15px}h1{font-size:28px;margin:0 0 5px}.subtitle{color:var(--muted);font-size:14px}.month-nav{display:flex;align-items:center;gap:8px}
+.icon-btn,.btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:9px 11px;display:inline-flex;align-items:center;gap:8px}.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}.btn.danger{color:var(--red)}.icon-btn:hover,.btn:hover{filter:brightness(.97)}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:19px;box-shadow:var(--shadow)}.stat-label{color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px}.stat-value{font-size:25px;font-weight:800;margin-top:9px}.positive{color:var(--green)}.negative{color:var(--red)}
+.section-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:15px;margin-top:15px}.section-title{font-size:16px;font-weight:750;margin:0 0 16px;display:flex;justify-content:space-between;align-items:center;gap:10px}.account-list{display:grid;gap:10px}.account{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:12px;gap:10px}.account-left{display:flex;align-items:center;gap:12px;min-width:0}.account-icon{width:38px;height:38px;border-radius:10px;background:var(--soft);color:var(--primary);display:grid;place-items:center;flex:none}.small{font-size:12px;color:var(--muted)}.amount{font-weight:750}
+.chart{height:240px;display:flex;align-items:flex-end;gap:10px;padding:10px 3px 0}.bar-wrap{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:7px}.bar{width:100%;max-width:42px;border-radius:7px 7px 2px 2px;background:var(--primary);min-height:4px}.bar.out{background:var(--red)}.bar-label{font-size:10px;color:var(--muted)}
+.transactions{margin-top:15px}.table-wrap{overflow-x:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}.table th{color:var(--muted);font-weight:600}.badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:11px}.actions{display:flex;gap:5px}.actions button{border:0;background:transparent;color:var(--muted);padding:5px}
+.view{display:none}.view.active{display:block}.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}.field input,.field select{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);outline:none}.field input:focus,.field select:focus{border-color:var(--primary)}.form-actions{margin-top:15px;display:flex;gap:8px;flex-wrap:wrap}.empty{text-align:center;color:var(--muted);padding:28px 10px}
+.goal{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px}.goal-top{display:flex;justify-content:space-between;gap:10px}.progress{height:8px;background:var(--border);border-radius:99px;overflow:hidden;margin-top:12px}.progress>div{height:100%;background:var(--primary);border-radius:99px}.toggle{display:flex;gap:8px;margin-bottom:15px}.toggle button{flex:1;padding:10px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:10px}.toggle button.active{background:var(--soft);color:var(--primary);border-color:var(--primary)}
+.notice{padding:12px;border-radius:10px;background:var(--soft);color:var(--text);font-size:13px;margin-bottom:15px}.danger{color:var(--red)!important}.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.quick-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:12px;padding:13px;text-align:left}.quick-btn strong{display:block;margin-top:5px}.site-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}.global-toggle{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}.global-toggle input{width:18px;height:18px;accent-color:var(--primary)}
+@media(max-width:950px){.cards{grid-template-columns:repeat(2,1fr)}.section-grid{grid-template-columns:1fr}.quick-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){aside{display:none}.app{display:block}main{margin:0;width:100%;padding:16px 14px 88px}.mobile-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.mobile-head .brand{padding:0;font-size:18px}.topbar{display:block}.topbar h1{font-size:23px}.month-nav{margin-top:12px}.cards{grid-template-columns:1fr 1fr;gap:10px}.card{padding:14px;border-radius:13px}.stat-value{font-size:19px}.table{min-width:650px}.bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:20;padding:7px 4px}.bottom-nav button{border:0;background:transparent;color:var(--muted);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px}.bottom-nav button.active{color:var(--primary)}.form-grid{grid-template-columns:1fr}.site-controls{align-items:flex-start;flex-direction:column}}
+@media(min-width:701px){.bottom-nav{display:none}}
+</style>
 </head>
 <body>
 <div class="app">
-  <aside>
-    <div class="brand"><i data-lucide="wallet"></i>Budget Planner</div>
-    <nav id="sideNav">
-      <button data-view="dashboard" class="active"><i data-lucide="layout-dashboard"></i>Dashboard</button>
-      <button data-view="transactions"><i data-lucide="arrow-left-right"></i>Transacties</button>
-      <button data-view="accounts"><i data-lucide="landmark"></i>Rekeningen</button>
-      <button data-view="crypto"><i data-lucide="bitcoin"></i>Crypto</button>
-      <button data-view="budgets"><i data-lucide="pie-chart"></i>Budgetten</button>
-      <button data-view="goals"><i data-lucide="target"></i>Spaardoelen</button>
-      <button data-view="recurring"><i data-lucide="repeat"></i>Terugkerend</button>
-    </nav>
-    <div class="bottom-tools"><button class="theme-btn" id="themeBtn"><i data-lucide="moon"></i><span>Licht/donker</span></button></div>
-  </aside>
-
-  <main>
-    <div class="mobile-head">
-      <div class="brand"><i data-lucide="wallet"></i>Budget Planner</div>
-      <button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button>
-    </div>
-    <div class="site-controls">
-      <label class="global-toggle">
-        <span><i data-lucide="bitcoin"></i> Crypto</span>
-        <input type="checkbox" id="globalCryptoToggle" ${data.cryptoEnabled?"checked":""}>
-        <span class="toggle-track"><span class="toggle-thumb"></span></span>
-      </label>
-    </div>
-
-    <section id="dashboard" class="view active"></section>
-    <section id="transactions" class="view"></section>
-    <section id="accounts" class="view"></section>
-    <section id="crypto" class="view"></section>
-    <section id="budgets" class="view"></section>
-    <section id="goals" class="view"></section>
-    <section id="recurring" class="view"></section>
-  </main>
+<aside>
+<div class="brand"><i data-lucide="wallet"></i>Budget Planner</div>
+<nav>
+<button data-view="dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</button>
+<button data-view="transactions"><i data-lucide="arrow-left-right"></i>Transacties</button>
+<button data-view="accounts"><i data-lucide="landmark"></i>Rekeningen</button>
+<button data-view="crypto"><i data-lucide="bitcoin"></i>Crypto</button>
+<button data-view="budgets"><i data-lucide="pie-chart"></i>Budgetten</button>
+<button data-view="goals"><i data-lucide="target"></i>Spaardoelen</button>
+<button data-view="recurring"><i data-lucide="repeat"></i>Terugkerend</button>
+</nav>
+<div class="bottom-tools"><button class="theme-btn" id="themeBtn"><i data-lucide="moon"></i><span>Licht/donker</span></button></div>
+</aside>
+<main>
+<div class="mobile-head"><div class="brand"><i data-lucide="wallet"></i>Budget Planner</div><button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button></div>
+<div class="site-controls">
+<div class="small">Alles wordt automatisch lokaal in deze browser opgeslagen.</div>
+<label class="global-toggle"><input type="checkbox" id="cryptoEnabled"> Crypto bijhouden</label>
 </div>
-
-<div class="bottom-nav" id="bottomNav">
-  <button data-view="dashboard" class="active"><i data-lucide="layout-dashboard"></i>Home</button>
-  <button data-view="transactions"><i data-lucide="arrow-left-right"></i>Transacties</button>
-  <button data-view="accounts"><i data-lucide="landmark"></i>Rekeningen</button>
-  <button data-view="crypto"><i data-lucide="bitcoin"></i>Crypto</button>
-  <button data-view="goals"><i data-lucide="target"></i>Doelen</button>
+<section id="dashboard" class="view"></section>
+<section id="transactions" class="view"></section>
+<section id="accounts" class="view"></section>
+<section id="crypto" class="view"></section>
+<section id="budgets" class="view"></section>
+<section id="goals" class="view"></section>
+<section id="recurring" class="view"></section>
+</main>
+</div>
+<div class="bottom-nav">
+<button data-view="dashboard"><i data-lucide="layout-dashboard"></i>Home</button>
+<button data-view="transactions"><i data-lucide="arrow-left-right"></i>Transacties</button>
+<button data-view="accounts"><i data-lucide="landmark"></i>Rekeningen</button>
+<button data-view="crypto"><i data-lucide="bitcoin"></i>Crypto</button>
+<button data-view="goals"><i data-lucide="target"></i>Doelen</button>
 </div>
 
 <script>
-const STORAGE_KEY = "budgetPlannerV1";
-const defaultData = {
-  theme:"light",
-  cryptoEnabled:true,
-  accounts:[
-    {id:"acc1",name:"ABN Betaalrekening",type:"betaal",balance:0,icon:"wallet"},
-    {id:"acc2",name:"ABN Spaarrekening",type:"spaar",balance:0,icon:"piggy-bank"},
-    {id:"acc3",name:"Revolut Betaalrekening",type:"revolut-betaal",balance:0,icon:"credit-card"},
-    {id:"acc4",name:"Revolut Spaarrekening",type:"revolut-spaar",balance:0,icon:"landmark"}
-  ],
-  crypto:0,
-  transactions:[],
-  budgets:[],
-  goals:[],
-  recurring:[]
-};
-let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || structuredClone(defaultData);
-let currentMonth = new Date();
-currentMonth.setDate(1);
+"use strict";
+
+const STORAGE_KEY="budgetPlannerV2";
+const DEFAULT_ACCOUNTS=[
+{id:"acc1",name:"ABN Betaalrekening",type:"betaal",balance:0,icon:"wallet"},
+{id:"acc2",name:"ABN Spaarrekening",type:"spaar",balance:0,icon:"piggy-bank"},
+{id:"acc3",name:"Revolut Betaalrekening",type:"revolut-betaal",balance:0,icon:"credit-card"},
+{id:"acc4",name:"Revolut Spaarrekening",type:"revolut-spaar",balance:0,icon:"landmark"}
+];
+const categories=["Wonen","Boodschappen","Auto","Benzine","Vervoer","Abonnementen","Uit eten","Entertainment","Kleding","Vakantie","Gezondheid","Sport","Verzekeringen","Belastingen","Salaris","Freelance","Sparen","Overig"];
+const quickExpenses=[["Boodschappen",50,"shopping-cart"],["Benzine",60,"fuel"],["Uit eten",30,"utensils"],["Overig",10,"more-horizontal"]];
+
+function freshData(){
+return {theme:"light",cryptoEnabled:true,crypto:0,accounts:structuredClone(DEFAULT_ACCOUNTS),transactions:[],budgets:[],goals:[],recurring:[],processedRecurring:{}};
+}
+function loadData(){
+let raw=null;
+try{raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||"null")}catch(e){}
+if(!raw){
+  try{
+    const old=JSON.parse(localStorage.getItem("budgetPlannerV1")||"null");
+    if(old) raw=old;
+  }catch(e){}
+}
+const d=raw||freshData();
+d.theme=d.theme==="dark"?"dark":"light";
+d.cryptoEnabled=typeof d.cryptoEnabled==="boolean"?d.cryptoEnabled:true;
+d.crypto=Number(d.crypto)||0;
+d.accounts=Array.isArray(d.accounts)&&d.accounts.length?d.accounts:structuredClone(DEFAULT_ACCOUNTS);
+const rename={"Betaalrekening":"ABN Betaalrekening","Spaarrekening":"ABN Spaarrekening"};
+d.accounts.forEach(a=>{if(rename[a.name])a.name=rename[a.name];a.balance=Number(a.balance)||0});
+d.transactions=Array.isArray(d.transactions)?d.transactions:[];
+d.budgets=Array.isArray(d.budgets)?d.budgets:[];
+d.goals=Array.isArray(d.goals)?d.goals:[];
+d.recurring=Array.isArray(d.recurring)?d.recurring:[];
+d.processedRecurring=d.processedRecurring&&typeof d.processedRecurring==="object"?d.processedRecurring:{};
+return d;
+}
+let data=loadData();
 let activeView="dashboard";
-if(typeof data.cryptoEnabled!=="boolean") data.cryptoEnabled=true;
-if(data.accounts){
-  const renameMap={"Betaalrekening":"ABN Betaalrekening","Spaarrekening":"ABN Spaarrekening"};
-  data.accounts.forEach(a=>{if(renameMap[a.name])a.name=renameMap[a.name]});
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-}
+let currentMonth=new Date();
+currentMonth.setDate(1);
 
-const euro = n => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(Number(n)||0);
-const id = () => Math.random().toString(36).slice(2)+Date.now();
-const save = () => { localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); render(); };
-const monthKey = d => {
-  const x=new Date(d); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}`;
-};
-const currentKey = () => monthKey(currentMonth);
-const monthName = () => currentMonth.toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
-const monthTransactions = () => data.transactions.filter(t=>monthKey(t.date)===currentKey());
+const $=id=>document.getElementById(id);
+const euro=n=>new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR"}).format(Number(n)||0);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const dateKey=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`};
+const monthKey=d=>{const x=new Date(d);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}`};
+const monthName=()=>currentMonth.toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
+const today=()=>{const x=new Date();return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`};
+const accountById=id=>data.accounts.find(a=>a.id===id);
+const monthTransactions=()=>data.transactions.filter(t=>monthKey(t.date)===monthKey(currentMonth));
 
-function processRecurringTransactions(){
-  if(!data.recurring?.length) return;
-  const now=new Date();
-  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-  let changed=false;
-  data.recurring.forEach(r=>{
-    const marker=`${ym}-${r.id}`;
-    if(data.transactions.some(t=>t.recurringId===marker)) return;
-    const acc=data.accounts.find(a=>a.id===r.accountId);
-    if(!acc) return;
-    const amount=Number(r.amount)||0;
-    if(r.kind==="expense" && acc.balance<amount) return;
-    const day=Math.min(Math.max(Number(r.day)||1,1),28);
-    acc.balance += r.kind==="income" ? amount : -amount;
-    data.transactions.push({
-      id:id(), recurringId:marker, description:r.description, amount,
-      date:`${ym}-${String(day).padStart(2,"0")}`, category:r.category,
-      accountId:r.accountId, kind:r.kind
-    });
-    changed=true;
-  });
-  if(changed) localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+function persist(){
+localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
 }
-function render(){
-  processRecurringTransactions();
-  document.documentElement.dataset.theme=data.theme==="dark"?"dark":"light";
-  renderDashboard(); renderTransactions(); renderAccounts(); renderCrypto(); renderBudgets(); renderGoals(); renderRecurring();
-  setActiveView(activeView); lucide.createIcons();
-}
+function saveAndRender(){persist();render();}
+function notify(msg){alert(msg);}
+
 function setActiveView(view){
-  if(view==="crypto" && !data.cryptoEnabled) view="dashboard";
-  activeView=view;
-  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
-  document.querySelectorAll("[data-view]").forEach(b=>{
-    const cryptoNav=b.dataset.view==="crypto";
-    b.style.display=cryptoNav && !data.cryptoEnabled?"none":"";
-    b.classList.toggle("active",b.dataset.view===view);
-  });
+if(view==="crypto"&&!data.cryptoEnabled)view="dashboard";
+activeView=view;
+document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
+document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
 }
 function navEvents(){
-  document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>setActiveView(b.dataset.view));
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>setActiveView(b.dataset.view)));
 }
-function themeToggle(){
-  data.theme=data.theme==="dark"?"light":"dark"; save();
-}
-document.getElementById("themeBtn").onclick=themeToggle;
-document.getElementById("mobileTheme").onclick=themeToggle;
-document.getElementById("globalCryptoToggle").onchange=e=>{
-  data.cryptoEnabled=e.target.checked;
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
-  if(!data.cryptoEnabled && activeView==="crypto") activeView="dashboard";
-  render();
+function themeToggle(){data.theme=data.theme==="dark"?"light":"dark";saveAndRender();}
+function setupGlobalControls(){
+const cb=$("cryptoEnabled");
+cb.checked=data.cryptoEnabled;
+cb.onchange=()=>{
+data.cryptoEnabled=cb.checked;
+if(!cb.checked&&activeView==="crypto")activeView="dashboard";
+saveAndRender();
 };
+$("themeBtn").onclick=themeToggle;
+$("mobileTheme").onclick=themeToggle;
+}
+
+function processRecurringTransactions(){
+const now=new Date();
+const realMonth=monthKey(now);
+const day=now.getDate();
+let changed=false;
+data.recurring.forEach(r=>{
+const marker=realMonth+"_"+r.id;
+if(data.processedRecurring[marker])return;
+if(day<Number(r.day||1))return;
+const acc=accountById(r.accountId);
+if(!acc)return;
+const amount=Number(r.amount)||0;
+if(amount<=0)return;
+if(r.kind==="expense"&&acc.balance<amount)return;
+const txDate=new Date(now.getFullYear(),now.getMonth(),Number(r.day||1));
+const tx={id:uid(),description:r.description,amount,date:dateKey(txDate),category:r.category,accountId:r.accountId,kind:r.kind,recurringId:r.id};
+data.transactions.push(tx);
+acc.balance += r.kind==="income"?amount:-amount;
+data.processedRecurring[marker]=true;
+changed=true;
+});
+if(changed)persist();
+}
+
+function render(){
+document.documentElement.dataset.theme=data.theme;
+$("cryptoEnabled").checked=data.cryptoEnabled;
+$("cryptoEnabled").parentElement.style.display="flex";
+$("crypto").style.display=data.cryptoEnabled?"":"none";
+renderDashboard();renderTransactions();renderAccounts();renderCrypto();renderBudgets();renderGoals();renderRecurring();
+setActiveView(activeView);
+lucide.createIcons();
+}
 
 function renderDashboard(){
-  const ts=monthTransactions();
-  const income=ts.filter(t=>t.kind==="income").reduce((a,t)=>a+Number(t.amount),0);
-  const expenses=ts.filter(t=>t.kind==="expense").reduce((a,t)=>a+Number(t.amount),0);
-  const cash=data.accounts.reduce((a,x)=>a+Number(x.balance),0);
-  const total=cash;
-  const net=income-expenses;
-  const days=["Ma","Di","Wo","Do","Vr","Za","Zo"];
-  const week=days.map((_,i)=>({income:0,expense:0,label:days[i]}));
-  ts.forEach(t=>{const d=new Date(t.date).getDay(); const idx=(d+6)%7; week[idx][t.kind==="income"?"income":"expense"]+=Number(t.amount)});
-  const max=Math.max(1,...week.flatMap(x=>[x.income,x.expense]));
-  const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
-  document.getElementById("dashboard").innerHTML=`
-    <div class="topbar">
-      <div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
-      <div class="month-nav">
-        <button class="icon-btn" id="prevMonth"><i data-lucide="chevron-left"></i></button>
-        <strong style="min-width:145px;text-align:center;text-transform:capitalize">${monthName()}</strong>
-        <button class="icon-btn" id="nextMonth"><i data-lucide="chevron-right"></i></button>
-      </div>
-    </div>
-    <div class="cards">
-      <div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${euro(cash)}</div></div>
-      <div class="card"><div class="stat-label"><i data-lucide="landmark"></i>Totaal vermogen</div><div class="stat-value">${euro(total)}</div></div>
-      <div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand</div><div class="stat-value ${net>=0?"positive":"negative"}">${euro(net)}</div></div>
-    </div>
-    <div class="section-grid">
-      <div class="card"><div class="section-title">Inkomsten & uitgaven</div>
-        <div class="chart">${week.map(x=>`<div class="bar-wrap"><div style="height:${Math.max(4,x.income/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar" style="height:100%;width:100%"></div></div><div style="height:${Math.max(4,x.expense/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar out" style="height:100%;width:100%"></div></div><div class="bar-label">${x.label}</div></div>`).join("")}</div>
-        <div class="small" style="margin-top:8px"><span class="positive">● Inkomsten</span> &nbsp; <span class="negative">● Uitgaven</span></div>
-      </div>
-      <div class="card"><div class="section-title">Vermogen <span class="small">Alleen bankrekeningen</span></div>
-        <div class="account-list">${data.accounts.map(a=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="${a.icon}"></i></div><div>${a.name}</div></div><div class="amount">${euro(a.balance)}</div></div>`).join("")}</div>
-      </div>
-    </div>
-    <div class="card transactions"><div class="section-title">Recente transacties <button class="btn primary" id="quickAdd"><i data-lucide="plus"></i>Toevoegen</button></div>
-      ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td class="${t.kind==="income"?"positive":t.kind==="transfer"?"":"negative"}">${t.kind==="income"?"+":t.kind==="transfer"?"↔":"-"}${euro(t.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
-    </div>`;
-  document.getElementById("prevMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()-1);render()};
-  document.getElementById("nextMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()+1);render()};
-  document.getElementById("quickAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>document.getElementById("description")?.focus(),0)};
-  const cryptoToggle=document.getElementById("showCryptoDashboard");
-  const cryptoBox=document.getElementById("dashboardCrypto");
-  cryptoToggle.onchange=()=>{
-    cryptoBox.innerHTML=cryptoToggle.checked
-      ? `<div style="display:flex;justify-content:space-between;align-items:center"><span>Crypto-inleg</span><strong>${euro(data.crypto)}</strong></div><div class="small" style="margin-top:6px">Dit bedrag staat los van je totaal bankvermogen.</div>`
-      : `Crypto is apart van je bankvermogen en wordt niet meegenomen in totaal vermogen.`;
-  };
+const ts=monthTransactions();
+const income=ts.filter(t=>t.kind==="income").reduce((s,t)=>s+Number(t.amount),0);
+const expenses=ts.filter(t=>t.kind==="expense").reduce((s,t)=>s+Number(t.amount),0);
+const cash=data.accounts.reduce((s,a)=>s+Number(a.balance),0);
+const net=income-expenses;
+const days=["Ma","Di","Wo","Do","Vr","Za","Zo"];
+const week=days.map(label=>({label,income:0,expense:0}));
+ts.forEach(t=>{
+ if(t.kind!=="income"&&t.kind!=="expense")return;
+ const d=new Date(t.date).getDay(),i=(d+6)%7;
+ week[i][t.kind==="income"?"income":"expense"]+=Number(t.amount);
+});
+const max=Math.max(1,...week.flatMap(x=>[x.income,x.expense]));
+const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
+
+$("dashboard").innerHTML=`
+<div class="topbar"><div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
+<div class="month-nav"><button class="icon-btn" id="prevMonth"><i data-lucide="chevron-left"></i></button><strong style="min-width:145px;text-align:center;text-transform:capitalize">${monthName()}</strong><button class="icon-btn" id="nextMonth"><i data-lucide="chevron-right"></i></button></div></div>
+<div class="cards">
+<div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${euro(cash)}</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="landmark"></i>Totaal vermogen</div><div class="stat-value">${euro(cash)}</div><div class="small" style="margin-top:6px">Alleen bankrekeningen</div></div>
+<div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand</div><div class="stat-value ${net>=0?"positive":"negative"}">${euro(net)}</div></div>
+${data.cryptoEnabled?`<div class="card"><div class="stat-label"><i data-lucide="bitcoin"></i>Crypto-inleg</div><div class="stat-value">${euro(data.crypto)}</div><div class="small" style="margin-top:6px">Niet in bankvermogen</div></div>`:""}
+</div>
+<div class="section-grid">
+<div class="card"><div class="section-title">Inkomsten & uitgaven</div>
+<div class="chart">${week.map(x=>`<div class="bar-wrap"><div style="height:${Math.max(4,x.income/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar" style="height:100%;width:100%"></div></div><div style="height:${Math.max(4,x.expense/max*150)}px;width:45%;display:flex;align-items:flex-end"><div class="bar out" style="height:100%;width:100%"></div></div><div class="bar-label">${x.label}</div></div>`).join("")}</div>
+<div class="small" style="margin-top:8px"><span class="positive">Inkomsten</span> &nbsp; <span class="negative">Uitgaven</span></div></div>
+<div class="card"><div class="section-title">Vermogen <span class="small">Bank</span></div><div class="account-list">${data.accounts.map(a=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="${a.icon}"></i></div><div>${esc(a.name)}</div></div><div class="amount">${euro(a.balance)}</div></div>`).join("")}</div></div>
+</div>
+<div class="card transactions"><div class="section-title">Snelle uitgave</div>
+<div class="quick-grid">${quickExpenses.map(q=>`<button class="quick-btn" data-quick-cat="${q[0]}" data-quick-amount="${q[1]}"><i data-lucide="${q[2]}"></i><strong>${esc(q[0])}</strong><span class="small">${euro(q[1])}</span></button>`).join("")}</div></div>
+<div class="card transactions"><div class="section-title">Recente transacties <button class="btn primary" id="dashboardAdd"><i data-lucide="plus"></i>Toevoegen</button></div>
+${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>transactionRow(t,false)).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}</div>`;
+
+$("prevMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()-1);render()};
+$("nextMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()+1);render()};
+$("dashboardAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>$("description")?.focus(),0)};
+document.querySelectorAll("[data-quick-cat]").forEach(btn=>btn.onclick=()=>quickExpense(btn.dataset.quickCat,Number(btn.dataset.quickAmount)));
+}
+
+function quickExpense(category,amount){
+const acc=data.accounts[0];
+if(!acc){notify("Geen rekening gevonden.");return}
+if(acc.balance<amount){notify(`Onvoldoende saldo op ${acc.name}.`);return}
+const tx={id:uid(),description:category,amount,date:today(),category,accountId:acc.id,kind:"expense"};
+data.transactions.push(tx);acc.balance-=amount;saveAndRender();
+}
+
+function transactionRow(t,full){
+const acc=accountById(t.accountId);
+const to=accountById(t.toAccountId);
+const sign=t.kind==="income"?"+":t.kind==="transfer"?"↔":"-";
+const cls=t.kind==="income"?"positive":t.kind==="expense"?"negative":"";
+return `<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${new Date(t.date).toLocaleDateString("nl-NL")}</td>${full?`<td>${esc(acc?.name||"-")}${t.kind==="transfer"&&to?` → ${esc(to.name)}`:""}</td>`:""}<td class="${cls}">${sign}${euro(t.amount)}</td>${full?`<td><div class="actions"><button data-edit="${t.id}" title="Bewerken"><i data-lucide="pencil"></i></button><button data-delete="${t.id}" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td>`:""}</tr>`;
 }
 
 function renderTransactions(){
-  const ts=[...monthTransactions()].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  document.getElementById("transactions").innerHTML=`
-    <div class="topbar"><div><h1>Transacties</h1><div class="subtitle">Inkomsten en uitgaven van ${monthName()}</div></div></div>
-    <div class="card">
-      <div class="section-title">Snelle uitgave <span class="small">Direct toevoegen</span></div>
-      <div class="quick-grid">
-        ${quickExpenses.map(q=>`<button type="button" class="quick-btn" data-quick="${q.name}" data-amount="${q.amount}" data-category="${q.category}"><strong>${esc(q.name)}</strong><span>${euro(q.amount)} · ${esc(q.category)}</span></button>`).join("")}
-      </div>
-    </div>
-    <div class="card" style="margin-top:15px">
-      <div class="section-title">Nieuwe transactie</div>
-      <form id="transactionForm">
-        <div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button><button type="button" data-kind="transfer">Overboeking</button></div>
-        <div class="form-grid">
-          <div class="field"><label>Omschrijving</label><input id="description" required placeholder="Bijv. Boodschappen"></div>
-          <div class="field"><label>Bedrag (€)</label><input id="amount" required type="number" min="0" step="0.01" placeholder="0,00"></div>
-          <div class="field"><label>Datum</label><input id="date" type="date" value="${new Date().toISOString().slice(0,10)}" required></div>
-          <div class="field"><label>Categorie</label><select id="category">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div>
-          <div class="field"><label id="accountLabel">Rekening</label><select id="account">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
-          <div class="field" id="transferField" style="display:none"><label>Geld naar</label><select id="transferTo">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
-        </div>
-        <div class="form-actions"><button class="btn primary" type="submit"><i data-lucide="plus"></i>Transactie toevoegen</button></div>
-      </form>
-    </div>
-    <div class="card transactions"><div class="section-title">Transacties</div>
-      ${ts.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Rekening</th><th>Bedrag</th><th></th></tr></thead><tbody>${ts.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td>${esc(data.accounts.find(a=>a.id===t.accountId)?.name||"-")}</td><td class="${t.kind==="income"?"positive":t.kind==="transfer"?"":"negative"}">${t.kind==="income"?"+":t.kind==="transfer"?"↔":"-"}${euro(t.amount)}</td><td><div class="actions"><button onclick="editTransaction('${t.id}')" title="Bewerken"><i data-lucide="pencil"></i></button><button onclick="deleteTransaction('${t.id}')" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties.</div>`}
-    </div>`;
-  let kind="expense";
-  const transferField=document.getElementById("transferField");
-  const categoryField=document.getElementById("category").parentElement;
-  const accountLabel=document.getElementById("accountLabel");
-  document.querySelectorAll("#transactionForm .toggle button").forEach(b=>b.onclick=()=>{
-    kind=b.dataset.kind;
-    document.querySelectorAll("#transactionForm .toggle button").forEach(x=>x.classList.toggle("active",x===b));
-    const isTransfer=kind==="transfer";
-    transferField.style.display=isTransfer?"block":"none";
-    categoryField.style.display=isTransfer?"none":"block";
-    accountLabel.textContent=isTransfer?"Van rekening":"Rekening";
-  });
-  document.getElementById("transactionForm").onsubmit=e=>{
-    e.preventDefault();
-    const amountValue=Number(amount.value);
-    if(!amountValue || amountValue<0)return;
-    if(kind==="transfer"){
-      const from=data.accounts.find(a=>a.id===account.value);
-      const to=data.accounts.find(a=>a.id===transferTo.value);
-      if(!from||!to||from.id===to.id){alert("Kies twee verschillende rekeningen.");return}
-      if(from.balance < amountValue){alert("Onvoldoende saldo op de bronrekening.");return}
-      from.balance-=amountValue;
-      to.balance+=amountValue;
-      data.transactions.push({
-        id:id(),description:description.value||"Overboeking",amount:amountValue,date:date.value,
-        category:"Overboeking",accountId:from.id,toAccountId:to.id,kind:"transfer"
-      });
-    } else {
-      const t={id:id(),description:description.value,amount:amountValue,date:date.value,category:category.value,accountId:account.value,kind};
-      const acc=data.accounts.find(a=>a.id===t.accountId);
-      if(acc) acc.balance += kind==="income"?t.amount:-t.amount;
-      data.transactions.push(t);
-    }
-    save();
-  };
-  document.querySelectorAll(".quick-btn").forEach(btn=>btn.onclick=()=>{
-    const acc=document.getElementById("account");
-    const selected=acc ? data.accounts.find(a=>a.id===acc.value) : null;
-    const value=Number(btn.dataset.amount);
-    if(!selected){alert("Kies eerst een rekening.");return}
-    if(selected.balance<value){alert("Onvoldoende saldo op deze rekening.");return}
-    selected.balance-=value;
-    data.transactions.push({
-      id:id(),description:btn.dataset.quick,amount:value,
-      date:new Date().toISOString().slice(0,10),category:btn.dataset.category,
-      accountId:selected.id,kind:"expense"
-    });
-    save();
-  });
-}
+const ts=[...monthTransactions()].sort((a,b)=>new Date(b.date)-new Date(a.date));
+$("transactions").innerHTML=`
+<div class="topbar"><div><h1>Transacties</h1><div class="subtitle">Inkomsten en uitgaven van ${monthName()}</div></div></div>
+<div class="card"><div class="section-title">Nieuwe transactie</div>
+<form id="transactionForm">
+<div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button><button type="button" data-kind="transfer">Overboeking</button></div>
+<div class="form-grid">
+<div class="field"><label>Omschrijving</label><input id="description" required placeholder="Bijv. Boodschappen"></div>
+<div class="field"><label>Bedrag (€)</label><input id="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+<div class="field"><label>Datum</label><input id="date" type="date" value="${today()}" required></div>
+<div class="field" id="categoryField"><label>Categorie</label><select id="category">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div>
+<div class="field"><label id="accountLabel">Rekening</label><select id="account">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
+<div class="field" id="transferField" style="display:none"><label>Geld naar</label><select id="transferTo">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div>
+</div>
+<div class="form-actions"><button class="btn primary" type="submit"><i data-lucide="plus"></i>Transactie toevoegen</button></div>
+</form></div>
+<div class="card transactions"><div class="section-title">Transacties</div>
+${ts.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Rekening</th><th>Bedrag</th><th></th></tr></thead><tbody>${ts.map(t=>transactionRow(t,true)).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties.</div>`}</div>`;
 
-const quickExpenses=[
-  {name:"Boodschappen",amount:50,category:"Boodschappen"},
-  {name:"Benzine",amount:60,category:"Benzine"},
-  {name:"Uit eten",amount:30,category:"Uit eten"},
-  {name:"Overig",amount:10,category:"Overig"}
-];
-const categories=["Wonen","Boodschappen","Auto","Benzine","Vervoer","Abonnementen","Uit eten","Entertainment","Kleding","Vakantie","Gezondheid","Sport","Verzekeringen","Belastingen","Salaris","Freelance","Sparen","Overig"];
-
-function renderAccounts(){
-  document.getElementById("accounts").innerHTML=`
-    <div class="topbar"><div><h1>Rekeningen</h1><div class="subtitle">Je actuele geldsaldi</div></div></div>
-    <div class="notice"><i data-lucide="info"></i> Pas saldi hier handmatig aan als je een startbedrag wilt instellen. Nieuwe transacties veranderen het saldo automatisch.</div>
-    <div class="cards">${data.accounts.map(a=>`<div class="card"><div class="stat-label"><i data-lucide="${a.icon}"></i>${esc(a.name)}</div><div class="stat-value">${euro(a.balance)}</div><button class="btn" style="margin-top:14px" onclick="adjustAccount('${a.id}')"><i data-lucide="pencil"></i>Saldo aanpassen</button></div>`).join("")}</div>`;
+let kind="expense";
+document.querySelectorAll("#transactionForm [data-kind]").forEach(btn=>btn.onclick=()=>{
+kind=btn.dataset.kind;
+document.querySelectorAll("#transactionForm [data-kind]").forEach(x=>x.classList.toggle("active",x===btn));
+$("transferField").style.display=kind==="transfer"?"block":"none";
+$("categoryField").style.display=kind==="transfer"?"none":"block";
+$("accountLabel").textContent=kind==="transfer"?"Van rekening":"Rekening";
+});
+$("transactionForm").onsubmit=e=>{
+e.preventDefault();
+const description=$("description").value.trim();
+const amount=Number($("amount").value);
+const date=$("date").value;
+const accountId=$("account").value;
+if(!description){notify("Vul een omschrijving in.");return}
+if(!Number.isFinite(amount)||amount<=0){notify("Vul een geldig bedrag in.");return}
+if(!date){notify("Kies een datum.");return}
+if(kind==="transfer"){
+const from=accountById(accountId),to=accountById($("transferTo").value);
+if(!from||!to||from.id===to.id){notify("Kies twee verschillende rekeningen.");return}
+if(from.balance<amount){notify("Onvoldoende saldo op de bronrekening.");return}
+from.balance-=amount;to.balance+=amount;
+data.transactions.push({id:uid(),description,amount,date,category:"Overboeking",accountId:from.id,toAccountId:to.id,kind:"transfer"});
+}else{
+const acc=accountById(accountId);
+if(!acc){notify("Kies een rekening.");return}
+if(kind==="expense"&&acc.balance<amount){notify("Onvoldoende saldo op deze rekening.");return}
+acc.balance+=kind==="income"?amount:-amount;
+data.transactions.push({id:uid(),description,amount,date,category:$("category").value,accountId,kind});
 }
-function adjustAccount(accountId){
-  const a=data.accounts.find(x=>x.id===accountId); const val=prompt(`Nieuw saldo voor ${a.name}:`,Number(a.balance).toFixed(2));
-  if(val!==null && !isNaN(Number(val))){a.balance=Number(val);save()}
-}
-
-function renderCrypto(){
-  document.getElementById("crypto").innerHTML=`
-    <div class="topbar"><div><h1>Crypto</h1><div class="subtitle">Alleen je totale inleg bijhouden</div></div></div>
-    <div class="card" style="max-width:650px">
-      <div class="section-title"><span>Crypto-inleg</span><i data-lucide="bitcoin"></i></div>
-      <div class="notice">Crypto wordt niet meegerekend als beschikbaar geld. Het wordt bewust niet meegerekend in je totaal vermogen.</div>
-      <div class="field"><label>Totale inleg (€)</label><input id="cryptoInput" type="number" min="0" step="0.01" value="${Number(data.crypto||0).toFixed(2)}"></div>
-      <div class="form-actions"><button class="btn primary" id="saveCrypto"><i data-lucide="save"></i>Opslaan</button></div>
-    </div>`;
-  document.getElementById("saveCrypto").onclick=()=>{data.crypto=Number(document.getElementById("cryptoInput").value)||0;save()};
-}
-
-function renderBudgets(){
-  const ts=monthTransactions();
-  document.getElementById("budgets").innerHTML=`
-    <div class="topbar"><div><h1>Budgetten</h1><div class="subtitle">Maandbudgetten voor ${monthName()}</div></div></div>
-    <div class="card"><div class="section-title">Budget toevoegen</div>
-      <form id="budgetForm"><div class="form-grid"><div class="field"><label>Categorie</label><select id="budgetCat">${categories.filter(c=>c!=="Salaris"&&c!=="Freelance").map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Budget per maand (€)</label><input id="budgetAmount" type="number" min="0" step=".01" required></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Budget opslaan</button></div></form>
-    </div>
-    <div class="card" style="margin-top:15px"><div class="section-title">Jouw budgetten</div>
-    ${data.budgets.length?data.budgets.map((b,i)=>{const spent=ts.filter(t=>t.kind==="expense"&&t.category===b.category).reduce((a,t)=>a+Number(t.amount),0);const pct=Math.min(100,spent/b.amount*100);return `<div class="goal"><div class="goal-top"><strong>${esc(b.category)}</strong><span>${euro(spent)} / ${euro(b.amount)}</span></div><div class="progress"><div style="width:${pct}%"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px" class="small"><span>${pct.toFixed(0)}% gebruikt</span><button class="icon-btn danger" onclick="deleteBudget(${i})"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen budgetten ingesteld.</div>`}</div>`;
-  document.getElementById("budgetForm").onsubmit=e=>{e.preventDefault();data.budgets.push({category:budgetCat.value,amount:Number(budgetAmount.value)});save()};
-}
-
-function renderGoals(){
-  document.getElementById("goals").innerHTML=`
-    <div class="topbar"><div><h1>Spaardoelen</h1><div class="subtitle">Werk stap voor stap naar je doelen</div></div></div>
-    <div class="card"><div class="section-title">Spaardoel toevoegen</div><form id="goalForm"><div class="form-grid"><div class="field"><label>Naam</label><input id="goalName" required placeholder="Bijv. Vakantie"></div><div class="field"><label>Doelbedrag (€)</label><input id="goalTarget" type="number" min="0" step=".01" required></div><div class="field"><label>Al gespaard (€)</label><input id="goalSaved" type="number" min="0" step=".01" value="0"></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Doel toevoegen</button></div></form></div>
-    <div class="card" style="margin-top:15px"><div class="section-title">Mijn doelen</div>
-    ${data.goals.length?data.goals.map((g,i)=>{const p=Math.min(100,g.saved/g.target*100||0);return `<div class="goal"><div class="goal-top"><strong>${esc(g.name)}</strong><span>${euro(g.saved)} / ${euro(g.target)}</span></div><div class="progress"><div style="width:${p}%"></div></div><div style="display:flex;justify-content:space-between;margin-top:8px" class="small"><span>${p.toFixed(0)}% behaald</span><button class="icon-btn danger" onclick="deleteGoal(${i})"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen spaardoelen.</div>`}</div>`;
-  document.getElementById("goalForm").onsubmit=e=>{e.preventDefault();data.goals.push({name:goalName.value,target:Number(goalTarget.value),saved:Number(goalSaved.value)||0});save()};
-}
-
-function renderRecurring(){
-  document.getElementById("recurring").innerHTML=`
-    <div class="topbar"><div><h1>Terugkerend</h1><div class="subtitle">Vaste inkomsten en kosten worden automatisch iedere maand verwerkt</div></div></div>
-    <div class="notice"><i data-lucide="refresh-cw"></i> Terugkerende transacties worden automatisch toegevoegd wanneer de maand wordt verwerkt.</div>
-    <div class="card"><div class="section-title">Terugkerende transactie toevoegen</div>
-      <form id="recForm"><div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button></div><div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0" step=".01" required></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="28" value="1" required></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form>
-    </div>
-    <div class="card" style="margin-top:15px"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" onclick="deleteRecurring(${i})"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
-  let kind="expense";
-  document.querySelectorAll("#recForm .toggle button").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;document.querySelectorAll("#recForm .toggle button").forEach(x=>x.classList.toggle("active",x===b))});
-  document.getElementById("recForm").onsubmit=e=>{e.preventDefault();data.recurring.push({id:id(),description:recDesc.value,amount:Number(recAmount.value),category:recCat.value,accountId:recAcc.value,day:Number(recDay.value),kind});save()};
+saveAndRender();
+};
+document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>editTransaction(b.dataset.edit));
+document.querySelectorAll("[data-delete]").forEach(b=>b.onclick=()=>deleteTransaction(b.dataset.delete));
 }
 
 function editTransaction(tid){
-  const t=data.transactions.find(x=>x.id===tid); if(!t)return;
-  const newAmount=prompt("Bedrag (€):",t.amount); if(newAmount===null)return;
-  const n=Number(newAmount); if(isNaN(n)||n<0)return;
-  if(t.kind==="transfer"){
-    const from=data.accounts.find(a=>a.id===t.accountId);
-    const to=data.accounts.find(a=>a.id===t.toAccountId);
-    if(from) from.balance+=t.amount;
-    if(to) to.balance-=t.amount;
-    if(!from||!to||from.balance<n){alert("Onvoldoende saldo voor deze wijziging.");if(from)from.balance-=t.amount;if(to)to.balance+=t.amount;return}
-    from.balance-=n; to.balance+=n;
-  } else {
-    const acc=data.accounts.find(a=>a.id===t.accountId);
-    if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
-    t.amount=n;
-    if(acc) acc.balance += t.kind==="income"?t.amount:-t.amount;
-  }
-  t.amount=n; save();
+const t=data.transactions.find(x=>x.id===tid);if(!t)return;
+const val=prompt("Nieuw bedrag (€):",String(t.amount));
+if(val===null)return;
+const n=Number(val);if(!Number.isFinite(n)||n<=0){notify("Ongeldig bedrag.");return}
+if(t.kind==="transfer"){
+const from=accountById(t.accountId),to=accountById(t.toAccountId);
+if(!from||!to)return;
+from.balance+=t.amount;to.balance-=t.amount;
+if(from.balance<n){from.balance-=t.amount;to.balance+=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
+from.balance-=n;to.balance+=n;
+}else{
+const acc=accountById(t.accountId);if(!acc)return;
+acc.balance+=t.kind==="income"?-t.amount:t.amount;
+if(t.kind==="expense"&&acc.balance<n){acc.balance-=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
+t.amount=n;acc.balance+=t.kind==="income"?n:-n;
+}
+t.amount=n;saveAndRender();
 }
 function deleteTransaction(tid){
-  const t=data.transactions.find(x=>x.id===tid); if(!t)return;
-  if(!confirm("Deze transactie verwijderen?"))return;
-  if(t.kind==="transfer"){
-    const from=data.accounts.find(a=>a.id===t.accountId);
-    const to=data.accounts.find(a=>a.id===t.toAccountId);
-    if(from) from.balance+=t.amount;
-    if(to) to.balance-=t.amount;
-  } else {
-    const acc=data.accounts.find(a=>a.id===t.accountId);
-    if(acc) acc.balance += t.kind==="income"?-t.amount:t.amount;
-  }
-  data.transactions=data.transactions.filter(x=>x.id!==tid);save();
+const t=data.transactions.find(x=>x.id===tid);if(!t)return;
+if(!confirm("Deze transactie verwijderen?"))return;
+if(t.kind==="transfer"){const from=accountById(t.accountId),to=accountById(t.toAccountId);if(from)from.balance+=t.amount;if(to)to.balance-=t.amount}
+else{const acc=accountById(t.accountId);if(acc)acc.balance+=t.kind==="income"?-t.amount:t.amount}
+data.transactions=data.transactions.filter(x=>x.id!==tid);saveAndRender();
 }
-function deleteBudget(i){if(confirm("Budget verwijderen?")){data.budgets.splice(i,1);save()}}
-function deleteGoal(i){if(confirm("Spaardoel verwijderen?")){data.goals.splice(i,1);save()}}
-function deleteRecurring(i){if(confirm("Terugkerende transactie verwijderen?")){data.recurring.splice(i,1);save()}}
-function formatDate(d){return new Date(d).toLocaleDateString("nl-NL")}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
-navEvents(); render();
+function renderAccounts(){
+$("accounts").innerHTML=`<div class="topbar"><div><h1>Rekeningen</h1><div class="subtitle">Je actuele geldsaldi</div></div></div>
+<div class="notice"><i data-lucide="info"></i> Nieuwe transacties veranderen de saldi automatisch. Gebruik "Saldo aanpassen" alleen voor een beginsaldo of correctie.</div>
+<div class="cards">${data.accounts.map(a=>`<div class="card"><div class="stat-label"><i data-lucide="${a.icon}"></i>${esc(a.name)}</div><div class="stat-value">${euro(a.balance)}</div><button class="btn" style="margin-top:14px" data-adjust="${a.id}"><i data-lucide="pencil"></i>Saldo aanpassen</button></div>`).join("")}</div>`;
+document.querySelectorAll("[data-adjust]").forEach(b=>b.onclick=()=>adjustAccount(b.dataset.adjust));
+}
+function adjustAccount(id){
+const a=accountById(id);if(!a)return;
+const v=prompt(`Nieuw saldo voor ${a.name}:`,a.balance.toFixed(2));
+if(v===null)return;const n=Number(v);
+if(!Number.isFinite(n)){notify("Ongeldig bedrag.");return}
+a.balance=n;saveAndRender();
+}
+
+function renderCrypto(){
+if(!data.cryptoEnabled){$("crypto").innerHTML="";return}
+$("crypto").innerHTML=`<div class="topbar"><div><h1>Crypto</h1><div class="subtitle">Alleen je totale inleg bijhouden</div></div></div>
+<div class="card" style="max-width:650px"><div class="section-title"><span>Crypto-inleg</span><i data-lucide="bitcoin"></i></div>
+<div class="notice">Crypto staat los van je bankrekeningen. Het wordt niet meegerekend in beschikbaar geld of totaal bankvermogen.</div>
+<div class="field"><label>Totale inleg (€)</label><input id="cryptoInput" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(data.crypto).toFixed(2)}"></div>
+<div class="form-actions"><button class="btn primary" id="saveCrypto"><i data-lucide="save"></i>Opslaan</button></div></div>`;
+$("saveCrypto").onclick=()=>{const n=Number($("cryptoInput").value);if(!Number.isFinite(n)||n<0){notify("Ongeldig bedrag.");return}data.crypto=n;saveAndRender()};
+}
+
+function renderBudgets(){
+const ts=monthTransactions();
+$("budgets").innerHTML=`<div class="topbar"><div><h1>Budgetten</h1><div class="subtitle">Maandbudgetten voor ${monthName()}</div></div></div>
+<div class="card"><div class="section-title">Budget toevoegen</div><form id="budgetForm"><div class="form-grid"><div class="field"><label>Categorie</label><select id="budgetCat">${categories.filter(c=>!["Salaris","Freelance"].includes(c)).map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Budget per maand (€)</label><input id="budgetAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Budget opslaan</button></div></form></div>
+<div class="card transactions"><div class="section-title">Jouw budgetten</div>${data.budgets.length?data.budgets.map((b,i)=>{const spent=ts.filter(t=>t.kind==="expense"&&t.category===b.category).reduce((s,t)=>s+Number(t.amount),0);const pct=b.amount>0?Math.min(100,spent/b.amount*100):0;return `<div class="goal"><div class="goal-top"><strong>${esc(b.category)}</strong><span>${euro(spent)} / ${euro(b.amount)}</span></div><div class="progress"><div style="width:${pct}%"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px" class="small"><span>${pct.toFixed(0)}% gebruikt</span><button class="icon-btn danger" data-budget-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen budgetten ingesteld.</div>`}</div>`;
+$("budgetForm").onsubmit=e=>{e.preventDefault();const amount=Number($("budgetAmount").value);if(!Number.isFinite(amount)||amount<=0){notify("Vul een geldig budget in.");return}data.budgets.push({category:$("budgetCat").value,amount});saveAndRender()};
+document.querySelectorAll("[data-budget-delete]").forEach(b=>b.onclick=()=>{if(confirm("Budget verwijderen?")){data.budgets.splice(Number(b.dataset.budgetDelete),1);saveAndRender()}});
+}
+
+function renderGoals(){
+$("goals").innerHTML=`<div class="topbar"><div><h1>Spaardoelen</h1><div class="subtitle">Werk stap voor stap naar je doelen</div></div></div>
+<div class="card"><div class="section-title">Spaardoel toevoegen</div><form id="goalForm"><div class="form-grid"><div class="field"><label>Naam</label><input id="goalName" required placeholder="Bijv. Vakantie"></div><div class="field"><label>Doelbedrag (€)</label><input id="goalTarget" type="number" min="0.01" step=".01" required inputmode="decimal"></div><div class="field"><label>Al gespaard (€)</label><input id="goalSaved" type="number" min="0" step=".01" value="0" inputmode="decimal"></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="plus"></i>Doel toevoegen</button></div></form></div>
+<div class="card transactions"><div class="section-title">Mijn doelen</div>${data.goals.length?data.goals.map((g,i)=>{const target=Number(g.target)||0,saved=Number(g.saved)||0,p=target?Math.min(100,saved/target*100):0;return `<div class="goal"><div class="goal-top"><strong>${esc(g.name)}</strong><span>${euro(saved)} / ${euro(target)}</span></div><div class="progress"><div style="width:${p}%"></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px" class="small"><span>${p.toFixed(0)}% behaald</span><button class="icon-btn danger" data-goal-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`}).join(""):`<div class="empty">Nog geen spaardoelen.</div>`}</div>`;
+$("goalForm").onsubmit=e=>{e.preventDefault();const target=Number($("goalTarget").value),saved=Number($("goalSaved").value)||0;if(!Number.isFinite(target)||target<=0){notify("Vul een geldig doelbedrag in.");return}data.goals.push({name:$("goalName").value.trim(),target,saved});saveAndRender()};
+document.querySelectorAll("[data-goal-delete]").forEach(b=>b.onclick=()=>{if(confirm("Spaardoel verwijderen?")){data.goals.splice(Number(b.dataset.goalDelete),1);saveAndRender()}});
+}
+
+function renderRecurring(){
+$("recurring").innerHTML=`<div class="topbar"><div><h1>Terugkerend</h1><div class="subtitle">Vaste inkomsten en kosten automatisch verwerken</div></div></div>
+<div class="notice"><i data-lucide="info"></i> Op de gekozen dag wordt de transactie automatisch één keer per maand toegevoegd. Een uitgave wordt alleen verwerkt als er voldoende saldo is.</div>
+<div class="card"><div class="section-title">Terugkerende transactie toevoegen</div><form id="recForm"><div class="toggle"><button type="button" data-reckind="expense" class="active">Uitgave</button><button type="button" data-reckind="income">Inkomst</button></div>
+<div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0.01" step=".01" required inputmode="decimal"></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="28" value="1" required></div></div>
+<div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form></div>
+<div class="card transactions"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)} · ${esc(accountById(r.accountId)?.name||"-")}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" data-rec-delete="${i}"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
+let kind="expense";
+document.querySelectorAll("[data-reckind]").forEach(b=>b.onclick=()=>{kind=b.dataset.reckind;document.querySelectorAll("[data-reckind]").forEach(x=>x.classList.toggle("active",x===b))});
+$("recForm").onsubmit=e=>{e.preventDefault();const amount=Number($("recAmount").value),day=Number($("recDay").value);if(!Number.isFinite(amount)||amount<=0||day<1||day>28){notify("Controleer bedrag en dag.");return}data.recurring.push({id:uid(),description:$("recDesc").value.trim(),amount,category:$("recCat").value,accountId:$("recAcc").value,day,kind});saveAndRender()};
+document.querySelectorAll("[data-rec-delete]").forEach(b=>b.onclick=()=>{if(confirm("Terugkerende transactie verwijderen?")){data.recurring.splice(Number(b.dataset.recDelete),1);saveAndRender()}});
+}
+
+function init(){
+processRecurringTransactions();
+navEvents();
+setupGlobalControls();
+render();
+}
+init();
 </script>
 </body>
 </html>
