@@ -128,7 +128,6 @@
       <div class="brand"><i data-lucide="wallet"></i>Budget Planner</div>
       <button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button>
     </div>
-
     <div class="site-controls">
       <label class="global-toggle">
         <span><i data-lucide="bitcoin"></i> Crypto</span>
@@ -194,29 +193,23 @@ const monthName = () => currentMonth.toLocaleDateString("nl-NL",{month:"long",ye
 const monthTransactions = () => data.transactions.filter(t=>monthKey(t.date)===currentKey());
 
 function processRecurringTransactions(){
-  if(!Array.isArray(data.recurring) || !data.recurring.length) return;
-  const today=new Date();
-  const targetMonth=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+  if(!data.recurring?.length) return;
+  const now=new Date();
+  const ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   let changed=false;
   data.recurring.forEach(r=>{
-    const marker=`${targetMonth}-${r.id}`;
+    const marker=`${ym}-${r.id}`;
     if(data.transactions.some(t=>t.recurringId===marker)) return;
-    const day=Math.min(Number(r.day)||1,28);
-    const date=`${targetMonth}-${String(day).padStart(2,"0")}`;
     const acc=data.accounts.find(a=>a.id===r.accountId);
     if(!acc) return;
-    if(r.kind==="expense" && acc.balance < Number(r.amount)) return;
     const amount=Number(r.amount)||0;
+    if(r.kind==="expense" && acc.balance<amount) return;
+    const day=Math.min(Math.max(Number(r.day)||1,1),28);
     acc.balance += r.kind==="income" ? amount : -amount;
     data.transactions.push({
-      id:id(),
-      recurringId:marker,
-      description:r.description,
-      amount,
-      date,
-      category:r.category,
-      accountId:r.accountId,
-      kind:r.kind
+      id:id(), recurringId:marker, description:r.description, amount,
+      date:`${ym}-${String(day).padStart(2,"0")}`, category:r.category,
+      accountId:r.accountId, kind:r.kind
     });
     changed=true;
   });
@@ -233,8 +226,8 @@ function setActiveView(view){
   activeView=view;
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
   document.querySelectorAll("[data-view]").forEach(b=>{
-    const isCrypto=b.dataset.view==="crypto";
-    b.style.display=isCrypto && !data.cryptoEnabled?"none":"";
+    const cryptoNav=b.dataset.view==="crypto";
+    b.style.display=cryptoNav && !data.cryptoEnabled?"none":"";
     b.classList.toggle("active",b.dataset.view===view);
   });
 }
@@ -246,10 +239,11 @@ function themeToggle(){
 }
 document.getElementById("themeBtn").onclick=themeToggle;
 document.getElementById("mobileTheme").onclick=themeToggle;
-document.getElementById("globalCryptoToggle").onchange=(e)=>{
+document.getElementById("globalCryptoToggle").onchange=e=>{
   data.cryptoEnabled=e.target.checked;
-  save();
-  setActiveView(e.target.checked ? activeView : (activeView==="crypto"?"dashboard":activeView));
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+  if(!data.cryptoEnabled && activeView==="crypto") activeView="dashboard";
+  render();
 };
 
 function renderDashboard(){
@@ -307,12 +301,11 @@ function renderTransactions(){
   document.getElementById("transactions").innerHTML=`
     <div class="topbar"><div><h1>Transacties</h1><div class="subtitle">Inkomsten en uitgaven van ${monthName()}</div></div></div>
     <div class="card">
-      <div class="section-title">Snelle uitgave <span class="small">1 klik = direct toegevoegd</span></div>
+      <div class="section-title">Snelle uitgave <span class="small">Direct toevoegen</span></div>
       <div class="quick-grid">
-        ${quickExpenses.map(q=>`<button class="quick-btn" data-quick="${q.name}" data-amount="${q.amount}" data-category="${q.category}"><strong>${esc(q.name)}</strong><span>${euro(q.amount)} · ${esc(q.category)}</span></button>`).join("")}
+        ${quickExpenses.map(q=>`<button type="button" class="quick-btn" data-quick="${q.name}" data-amount="${q.amount}" data-category="${q.category}"><strong>${esc(q.name)}</strong><span>${euro(q.amount)} · ${esc(q.category)}</span></button>`).join("")}
       </div>
     </div>
-
     <div class="card" style="margin-top:15px">
       <div class="section-title">Nieuwe transactie</div>
       <form id="transactionForm">
@@ -367,14 +360,16 @@ function renderTransactions(){
     save();
   };
   document.querySelectorAll(".quick-btn").forEach(btn=>btn.onclick=()=>{
-    const acc=data.accounts.find(a=>a.id===document.getElementById("account").value);
-    const amountValue=Number(btn.dataset.amount);
-    if(!acc || acc.balance < amountValue){alert("Onvoldoende saldo op deze rekening.");return}
-    acc.balance-=amountValue;
+    const acc=document.getElementById("account");
+    const selected=acc ? data.accounts.find(a=>a.id===acc.value) : null;
+    const value=Number(btn.dataset.amount);
+    if(!selected){alert("Kies eerst een rekening.");return}
+    if(selected.balance<value){alert("Onvoldoende saldo op deze rekening.");return}
+    selected.balance-=value;
     data.transactions.push({
-      id:id(),description:btn.dataset.quick,amount:amountValue,
+      id:id(),description:btn.dataset.quick,amount:value,
       date:new Date().toISOString().slice(0,10),category:btn.dataset.category,
-      accountId:acc.id,kind:"expense"
+      accountId:selected.id,kind:"expense"
     });
     save();
   });
@@ -400,12 +395,11 @@ function adjustAccount(accountId){
 }
 
 function renderCrypto(){
-  if(!data.cryptoEnabled){document.getElementById("crypto").innerHTML="";return}
   document.getElementById("crypto").innerHTML=`
     <div class="topbar"><div><h1>Crypto</h1><div class="subtitle">Alleen je totale inleg bijhouden</div></div></div>
     <div class="card" style="max-width:650px">
       <div class="section-title"><span>Crypto-inleg</span><i data-lucide="bitcoin"></i></div>
-      <div class="notice">Crypto wordt niet meegerekend als beschikbaar geld. Het wordt alleen toegevoegd aan je totale vermogen.</div>
+      <div class="notice">Crypto wordt niet meegerekend als beschikbaar geld. Het wordt bewust niet meegerekend in je totaal vermogen.</div>
       <div class="field"><label>Totale inleg (€)</label><input id="cryptoInput" type="number" min="0" step="0.01" value="${Number(data.crypto||0).toFixed(2)}"></div>
       <div class="form-actions"><button class="btn primary" id="saveCrypto"><i data-lucide="save"></i>Opslaan</button></div>
     </div>`;
@@ -436,11 +430,11 @@ function renderGoals(){
 function renderRecurring(){
   document.getElementById("recurring").innerHTML=`
     <div class="topbar"><div><h1>Terugkerend</h1><div class="subtitle">Vaste inkomsten en kosten worden automatisch iedere maand verwerkt</div></div></div>
-    <div class="notice"><i data-lucide="refresh-cw"></i> Terugkerende transacties worden automatisch toegevoegd. Voor uitgaven moet er voldoende saldo op de gekozen rekening staan.</div>
+    <div class="notice"><i data-lucide="refresh-cw"></i> Terugkerende transacties worden automatisch toegevoegd wanneer de maand wordt verwerkt.</div>
     <div class="card"><div class="section-title">Terugkerende transactie toevoegen</div>
       <form id="recForm"><div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button></div><div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0" step=".01" required></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="28" value="1" required></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form>
     </div>
-    <div class="card" style="margin-top:15px"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)} · Automatisch</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" onclick="deleteRecurring(${i})"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
+    <div class="card" style="margin-top:15px"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" onclick="deleteRecurring(${i})"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
   let kind="expense";
   document.querySelectorAll("#recForm .toggle button").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;document.querySelectorAll("#recForm .toggle button").forEach(x=>x.classList.toggle("active",x===b))});
   document.getElementById("recForm").onsubmit=e=>{e.preventDefault();data.recurring.push({id:id(),description:recDesc.value,amount:Number(recAmount.value),category:recCat.value,accountId:recAcc.value,day:Number(recDay.value),kind});save()};
