@@ -133,6 +133,17 @@ h1{letter-spacing:-.035em}
 .category-bar{height:7px;background:var(--border);border-radius:99px;overflow:hidden}
 .category-bar>div{height:100%;background:var(--primary);border-radius:99px}
 @media(max-width:850px){.recent-overview-grid{grid-template-columns:1fr}.category-overview{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:18px}}
+@media(max-width:700px){
+  #dashboard .recent-overview-grid .table-wrap{overflow-x:visible;width:100%;}
+  #dashboard .recent-overview-grid .table{width:100%;table-layout:fixed;}
+  #dashboard .recent-overview-grid .table th,#dashboard .recent-overview-grid .table td{padding:9px 3px;font-size:11px;vertical-align:middle;}
+  #dashboard .recent-overview-grid .table th:nth-child(1),#dashboard .recent-overview-grid .table td:nth-child(1){width:38%;}
+  #dashboard .recent-overview-grid .table th:nth-child(2),#dashboard .recent-overview-grid .table td:nth-child(2){width:27%;}
+  #dashboard .recent-overview-grid .table th:nth-child(3),#dashboard .recent-overview-grid .table td:nth-child(3){width:17%;white-space:nowrap;}
+  #dashboard .recent-overview-grid .table th:nth-child(4),#dashboard .recent-overview-grid .table td:nth-child(4){width:18%;white-space:nowrap;text-align:right;}
+  #dashboard .recent-overview-grid .table td:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #dashboard .recent-overview-grid .badge{padding:3px 5px;font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+}
 
 /* Compacte rekeningen-tegel */
 .section-grid > .card:first-child .account-list { gap: 8px; }
