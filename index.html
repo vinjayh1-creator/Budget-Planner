@@ -494,16 +494,9 @@ const dpIncome=data.dealplug.entries.filter(e=>e.kind==="income").reduce((s,e)=>
 const dpCosts=data.dealplug.entries.filter(e=>e.kind==="expense").reduce((s,e)=>s+Number(e.amount),0);
 const dpBalance=Number(data.dealplug.opening)+dpIncome-dpCosts;
 const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
-const snapshotKeys=Object.keys(data.accountSnapshots||{}).filter(k=>/^\\d{4}-\\d{2}$/.test(k)).sort();
-const filledSnapshotKeys=snapshotKeys.filter(k=>{
-  const s=data.accountSnapshots?.[k];
-  return s && (Object.prototype.hasOwnProperty.call(s,"acc1") || Object.prototype.hasOwnProperty.call(s,"acc4"));
-});
-const dashboardSnapshotKey=filledSnapshotKeys.length ? filledSnapshotKeys[filledSnapshotKeys.length-1] : (snapshotKeys[0]||"");
+const dashboardSnapshotKey=monthKey(currentMonth);
 const dashboardSnapshot=data.accountSnapshots?.[dashboardSnapshotKey]||{};
-const dashboardSnapshotLabel=dashboardSnapshotKey
-  ? new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"})
-  : "geen maandstand";
+const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
 $("dashboard").innerHTML=`
 <div class="topbar"><div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
 <div class="month-nav"><button class="icon-btn" id="prevMonth"><i data-lucide="chevron-left"></i></button><strong style="min-width:145px;text-align:center;text-transform:capitalize">${monthName()}</strong><button class="icon-btn" id="nextMonth"><i data-lucide="chevron-right"></i></button></div></div>
@@ -750,7 +743,7 @@ let selectedSnapshotMonth="";
 
 function renderAccounts(){
 const months=[];
-const startDate=new Date(2026,9,1); // eerste stand: 1-10-2026
+const startDate=new Date(2026,8,1); // eerste stand: 1-09-2026
 const now=new Date();
 const current=new Date(now.getFullYear(),now.getMonth(),1);
 
