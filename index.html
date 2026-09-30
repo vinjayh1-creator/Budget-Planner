@@ -31,6 +31,18 @@
     .theme-btn{width:100%;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center}
     main{margin-left:245px;width:calc(100% - 245px);padding:28px;max-width:1500px}
     .mobile-head{display:none}
+    .site-controls{display:flex;justify-content:flex-end;margin-bottom:12px}
+    .global-toggle{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--card);padding:7px 10px;border-radius:10px;color:var(--text);font-size:13px;cursor:pointer;box-shadow:var(--shadow)}
+    .global-toggle>span:first-child{display:flex;align-items:center;gap:6px}
+    .global-toggle input{display:none}
+    .toggle-track{width:36px;height:20px;border-radius:99px;background:var(--border);padding:2px;transition:.2s}
+    .toggle-thumb{display:block;width:16px;height:16px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+    .global-toggle input:checked + .toggle-track{background:var(--primary)}
+    .global-toggle input:checked + .toggle-track .toggle-thumb{transform:translateX(16px)}
+    .quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+    .quick-btn{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px;text-align:left}
+    .quick-btn strong{display:block;font-size:13px}
+    .quick-btn span{font-size:11px;color:var(--muted)}
     .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;gap:15px}
     h1{font-size:28px;margin:0 0 5px}
     .subtitle{color:var(--muted);font-size:14px}
@@ -86,6 +98,7 @@
       .mobile-head .brand{padding:0;font-size:18px}
       .topbar{display:block}.topbar h1{font-size:23px}.month-nav{margin-top:12px}
       .cards{grid-template-columns:1fr 1fr;gap:10px}.card{padding:14px;border-radius:13px}.stat-value{font-size:19px}
+      .quick-grid{grid-template-columns:1fr 1fr}
       .table-wrap{overflow-x:auto}.table{min-width:650px}
       .bottom-nav{position:fixed;display:grid;grid-template-columns:repeat(5,1fr);bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);z-index:20;padding:7px 4px}
       .bottom-nav button{border:0;background:transparent;color:var(--muted);font-size:10px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px}
@@ -116,6 +129,14 @@
       <button class="icon-btn" id="mobileTheme"><i data-lucide="moon"></i></button>
     </div>
 
+    <div class="site-controls">
+      <label class="global-toggle">
+        <span><i data-lucide="bitcoin"></i> Crypto</span>
+        <input type="checkbox" id="globalCryptoToggle" ${data.cryptoEnabled?"checked":""}>
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </label>
+    </div>
+
     <section id="dashboard" class="view active"></section>
     <section id="transactions" class="view"></section>
     <section id="accounts" class="view"></section>
@@ -138,6 +159,7 @@
 const STORAGE_KEY = "budgetPlannerV1";
 const defaultData = {
   theme:"light",
+  cryptoEnabled:true,
   accounts:[
     {id:"acc1",name:"ABN Betaalrekening",type:"betaal",balance:0,icon:"wallet"},
     {id:"acc2",name:"ABN Spaarrekening",type:"spaar",balance:0,icon:"piggy-bank"},
@@ -154,6 +176,7 @@ let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || structured
 let currentMonth = new Date();
 currentMonth.setDate(1);
 let activeView="dashboard";
+if(typeof data.cryptoEnabled!=="boolean") data.cryptoEnabled=true;
 if(data.accounts){
   const renameMap={"Betaalrekening":"ABN Betaalrekening","Spaarrekening":"ABN Spaarrekening"};
   data.accounts.forEach(a=>{if(renameMap[a.name])a.name=renameMap[a.name]});
@@ -170,15 +193,50 @@ const currentKey = () => monthKey(currentMonth);
 const monthName = () => currentMonth.toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
 const monthTransactions = () => data.transactions.filter(t=>monthKey(t.date)===currentKey());
 
+function processRecurringTransactions(){
+  if(!Array.isArray(data.recurring) || !data.recurring.length) return;
+  const today=new Date();
+  const targetMonth=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}`;
+  let changed=false;
+  data.recurring.forEach(r=>{
+    const marker=`${targetMonth}-${r.id}`;
+    if(data.transactions.some(t=>t.recurringId===marker)) return;
+    const day=Math.min(Number(r.day)||1,28);
+    const date=`${targetMonth}-${String(day).padStart(2,"0")}`;
+    const acc=data.accounts.find(a=>a.id===r.accountId);
+    if(!acc) return;
+    if(r.kind==="expense" && acc.balance < Number(r.amount)) return;
+    const amount=Number(r.amount)||0;
+    acc.balance += r.kind==="income" ? amount : -amount;
+    data.transactions.push({
+      id:id(),
+      recurringId:marker,
+      description:r.description,
+      amount,
+      date,
+      category:r.category,
+      accountId:r.accountId,
+      kind:r.kind
+    });
+    changed=true;
+  });
+  if(changed) localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
 function render(){
+  processRecurringTransactions();
   document.documentElement.dataset.theme=data.theme==="dark"?"dark":"light";
   renderDashboard(); renderTransactions(); renderAccounts(); renderCrypto(); renderBudgets(); renderGoals(); renderRecurring();
   setActiveView(activeView); lucide.createIcons();
 }
 function setActiveView(view){
+  if(view==="crypto" && !data.cryptoEnabled) view="dashboard";
   activeView=view;
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id===view));
-  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
+  document.querySelectorAll("[data-view]").forEach(b=>{
+    const isCrypto=b.dataset.view==="crypto";
+    b.style.display=isCrypto && !data.cryptoEnabled?"none":"";
+    b.classList.toggle("active",b.dataset.view===view);
+  });
 }
 function navEvents(){
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>setActiveView(b.dataset.view));
@@ -188,6 +246,11 @@ function themeToggle(){
 }
 document.getElementById("themeBtn").onclick=themeToggle;
 document.getElementById("mobileTheme").onclick=themeToggle;
+document.getElementById("globalCryptoToggle").onchange=(e)=>{
+  data.cryptoEnabled=e.target.checked;
+  save();
+  setActiveView(e.target.checked ? activeView : (activeView==="crypto"?"dashboard":activeView));
+};
 
 function renderDashboard(){
   const ts=monthTransactions();
@@ -214,7 +277,6 @@ function renderDashboard(){
       <div class="card"><div class="stat-label"><i data-lucide="wallet"></i>Beschikbaar geld</div><div class="stat-value">${euro(cash)}</div></div>
       <div class="card"><div class="stat-label"><i data-lucide="landmark"></i>Totaal vermogen</div><div class="stat-value">${euro(total)}</div></div>
       <div class="card"><div class="stat-label"><i data-lucide="${net>=0?"trending-up":"trending-down"}"></i>Deze maand</div><div class="stat-value ${net>=0?"positive":"negative"}">${euro(net)}</div></div>
-      <div class="card"><div class="stat-label"><i data-lucide="bitcoin"></i>Crypto</div><div class="stat-value">Apart</div><div class="small" style="margin-top:6px">Niet meegenomen in totaal vermogen</div></div>
     </div>
     <div class="section-grid">
       <div class="card"><div class="section-title">Inkomsten & uitgaven</div>
@@ -224,15 +286,6 @@ function renderDashboard(){
       <div class="card"><div class="section-title">Vermogen <span class="small">Alleen bankrekeningen</span></div>
         <div class="account-list">${data.accounts.map(a=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="${a.icon}"></i></div><div>${a.name}</div></div><div class="amount">${euro(a.balance)}</div></div>`).join("")}</div>
       </div>
-    </div>
-    <div class="card" style="margin-top:15px">
-      <div class="section-title">
-        <span>Crypto</span>
-        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)">
-          <input type="checkbox" id="showCryptoDashboard"> Tonen op dashboard
-        </label>
-      </div>
-      <div id="dashboardCrypto" class="small">Crypto is apart van je bankvermogen en wordt niet meegenomen in totaal vermogen.</div>
     </div>
     <div class="card transactions"><div class="section-title">Recente transacties <button class="btn primary" id="quickAdd"><i data-lucide="plus"></i>Toevoegen</button></div>
       ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Omschrijving</th><th>Categorie</th><th>Datum</th><th>Bedrag</th></tr></thead><tbody>${recent.map(t=>`<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${formatDate(t.date)}</td><td class="${t.kind==="income"?"positive":t.kind==="transfer"?"":"negative"}">${t.kind==="income"?"+":t.kind==="transfer"?"↔":"-"}${euro(t.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nog geen transacties in deze maand.</div>`}
@@ -254,6 +307,13 @@ function renderTransactions(){
   document.getElementById("transactions").innerHTML=`
     <div class="topbar"><div><h1>Transacties</h1><div class="subtitle">Inkomsten en uitgaven van ${monthName()}</div></div></div>
     <div class="card">
+      <div class="section-title">Snelle uitgave <span class="small">1 klik = direct toegevoegd</span></div>
+      <div class="quick-grid">
+        ${quickExpenses.map(q=>`<button class="quick-btn" data-quick="${q.name}" data-amount="${q.amount}" data-category="${q.category}"><strong>${esc(q.name)}</strong><span>${euro(q.amount)} · ${esc(q.category)}</span></button>`).join("")}
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:15px">
       <div class="section-title">Nieuwe transactie</div>
       <form id="transactionForm">
         <div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button><button type="button" data-kind="transfer">Overboeking</button></div>
@@ -306,8 +366,26 @@ function renderTransactions(){
     }
     save();
   };
+  document.querySelectorAll(".quick-btn").forEach(btn=>btn.onclick=()=>{
+    const acc=data.accounts.find(a=>a.id===document.getElementById("account").value);
+    const amountValue=Number(btn.dataset.amount);
+    if(!acc || acc.balance < amountValue){alert("Onvoldoende saldo op deze rekening.");return}
+    acc.balance-=amountValue;
+    data.transactions.push({
+      id:id(),description:btn.dataset.quick,amount:amountValue,
+      date:new Date().toISOString().slice(0,10),category:btn.dataset.category,
+      accountId:acc.id,kind:"expense"
+    });
+    save();
+  });
 }
 
+const quickExpenses=[
+  {name:"Boodschappen",amount:50,category:"Boodschappen"},
+  {name:"Benzine",amount:60,category:"Benzine"},
+  {name:"Uit eten",amount:30,category:"Uit eten"},
+  {name:"Overig",amount:10,category:"Overig"}
+];
 const categories=["Wonen","Boodschappen","Auto","Benzine","Vervoer","Abonnementen","Uit eten","Entertainment","Kleding","Vakantie","Gezondheid","Sport","Verzekeringen","Belastingen","Salaris","Freelance","Sparen","Overig"];
 
 function renderAccounts(){
@@ -322,6 +400,7 @@ function adjustAccount(accountId){
 }
 
 function renderCrypto(){
+  if(!data.cryptoEnabled){document.getElementById("crypto").innerHTML="";return}
   document.getElementById("crypto").innerHTML=`
     <div class="topbar"><div><h1>Crypto</h1><div class="subtitle">Alleen je totale inleg bijhouden</div></div></div>
     <div class="card" style="max-width:650px">
@@ -356,11 +435,12 @@ function renderGoals(){
 
 function renderRecurring(){
   document.getElementById("recurring").innerHTML=`
-    <div class="topbar"><div><h1>Terugkerend</h1><div class="subtitle">Vaste inkomsten en kosten bijhouden</div></div></div>
+    <div class="topbar"><div><h1>Terugkerend</h1><div class="subtitle">Vaste inkomsten en kosten worden automatisch iedere maand verwerkt</div></div></div>
+    <div class="notice"><i data-lucide="refresh-cw"></i> Terugkerende transacties worden automatisch toegevoegd. Voor uitgaven moet er voldoende saldo op de gekozen rekening staan.</div>
     <div class="card"><div class="section-title">Terugkerende transactie toevoegen</div>
       <form id="recForm"><div class="toggle"><button type="button" data-kind="expense" class="active">Uitgave</button><button type="button" data-kind="income">Inkomst</button></div><div class="form-grid"><div class="field"><label>Omschrijving</label><input id="recDesc" required placeholder="Bijv. Huur"></div><div class="field"><label>Bedrag (€)</label><input id="recAmount" type="number" min="0" step=".01" required></div><div class="field"><label>Categorie</label><select id="recCat">${categories.map(c=>`<option>${c}</option>`).join("")}</select></div><div class="field"><label>Rekening</label><select id="recAcc">${data.accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></div><div class="field"><label>Dag van de maand</label><input id="recDay" type="number" min="1" max="28" value="1" required></div></div><div class="form-actions"><button class="btn primary"><i data-lucide="repeat"></i>Toevoegen</button></div></form>
     </div>
-    <div class="card" style="margin-top:15px"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)}</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" onclick="deleteRecurring(${i})"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
+    <div class="card" style="margin-top:15px"><div class="section-title">Vaste transacties</div>${data.recurring.length?data.recurring.map((r,i)=>`<div class="account"><div class="account-left"><div class="account-icon"><i data-lucide="repeat"></i></div><div><strong>${esc(r.description)}</strong><div class="small">Elke maand op dag ${r.day} · ${esc(r.category)} · Automatisch</div></div></div><div style="display:flex;align-items:center;gap:12px"><span class="${r.kind==="income"?"positive":"negative"}">${r.kind==="income"?"+":"-"}${euro(r.amount)}</span><button class="icon-btn danger" onclick="deleteRecurring(${i})"><i data-lucide="trash-2"></i></button></div></div>`).join(""):`<div class="empty">Nog geen terugkerende transacties.</div>`}</div>`;
   let kind="expense";
   document.querySelectorAll("#recForm .toggle button").forEach(b=>b.onclick=()=>{kind=b.dataset.kind;document.querySelectorAll("#recForm .toggle button").forEach(x=>x.classList.toggle("active",x===b))});
   document.getElementById("recForm").onsubmit=e=>{e.preventDefault();data.recurring.push({id:id(),description:recDesc.value,amount:Number(recAmount.value),category:recCat.value,accountId:recAcc.value,day:Number(recDay.value),kind});save()};
