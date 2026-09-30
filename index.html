@@ -221,15 +221,34 @@ ${recent.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Oms
 $("prevMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()-1);render()};
 $("nextMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()+1);render()};
 $("dashboardAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>$("description")?.focus(),0)};
-document.querySelectorAll("[data-quick-cat]").forEach(btn=>btn.onclick=()=>quickExpense(btn.dataset.quickCat,Number(btn.dataset.quickAmount)));
+document.querySelectorAll("[data-quick-cat]").forEach(btn=>btn.onclick=()=>{
+  const category=btn.dataset.quickCat;
+  const defaultAmount=Number(btn.dataset.quickAmount)||0;
+  const entered=prompt(`Bedrag voor ${category} (€):`, defaultAmount.toFixed(2));
+  if(entered===null)return;
+  const normalized=String(entered).replace(",",".").trim();
+  const amount=Number(normalized);
+  if(!Number.isFinite(amount)||amount<=0){
+    notify("Vul een geldig bedrag in.");
+    return;
+  }
+  quickExpense(category,amount);
+});
 }
 
 function quickExpense(category,amount){
-const acc=data.accounts[0];
-if(!acc){notify("Geen rekening gevonden.");return}
-if(acc.balance<amount){notify(`Onvoldoende saldo op ${acc.name}.`);return}
-const tx={id:uid(),description:category,amount,date:today(),category,accountId:acc.id,kind:"expense"};
-data.transactions.push(tx);acc.balance-=amount;saveAndRender();
+const tx={
+id:uid(),
+description:category,
+amount,
+date:today(),
+category,
+accountId:null,
+kind:"expense",
+quickOnly:true
+};
+data.transactions.push(tx);
+saveAndRender();
 }
 
 function transactionRow(t,full){
@@ -237,7 +256,7 @@ const acc=accountById(t.accountId);
 const to=accountById(t.toAccountId);
 const sign=t.kind==="income"?"+":t.kind==="transfer"?"↔":"-";
 const cls=t.kind==="income"?"positive":t.kind==="expense"?"negative":"";
-return `<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${new Date(t.date).toLocaleDateString("nl-NL")}</td>${full?`<td>${esc(acc?.name||"-")}${t.kind==="transfer"&&to?` → ${esc(to.name)}`:""}</td>`:""}<td class="${cls}">${sign}${euro(t.amount)}</td>${full?`<td><div class="actions"><button data-edit="${t.id}" title="Bewerken"><i data-lucide="pencil"></i></button><button data-delete="${t.id}" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td>`:""}</tr>`;
+return `<tr><td>${esc(t.description)}</td><td><span class="badge">${esc(t.category)}</span></td><td>${new Date(t.date).toLocaleDateString("nl-NL")}</td>${full?`<td>${esc(t.quickOnly?"Uitgavenregistratie":(acc?.name||"-"))}${t.kind==="transfer"&&to?` → ${esc(to.name)}`:""}</td>`:""}<td class="${cls}">${sign}${euro(t.amount)}</td>${full?`<td><div class="actions"><button data-edit="${t.id}" title="Bewerken"><i data-lucide="pencil"></i></button><button data-delete="${t.id}" class="danger" title="Verwijderen"><i data-lucide="trash-2"></i></button></div></td>`:""}</tr>`;
 }
 
 function renderTransactions(){
@@ -308,10 +327,14 @@ from.balance+=t.amount;to.balance-=t.amount;
 if(from.balance<n){from.balance-=t.amount;to.balance+=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
 from.balance-=n;to.balance+=n;
 }else{
+if(t.quickOnly){
+t.amount=n;
+}else{
 const acc=accountById(t.accountId);if(!acc)return;
 acc.balance+=t.kind==="income"?-t.amount:t.amount;
 if(t.kind==="expense"&&acc.balance<n){acc.balance-=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
 t.amount=n;acc.balance+=t.kind==="income"?n:-n;
+}
 }
 t.amount=n;saveAndRender();
 }
@@ -319,7 +342,7 @@ function deleteTransaction(tid){
 const t=data.transactions.find(x=>x.id===tid);if(!t)return;
 if(!confirm("Deze transactie verwijderen?"))return;
 if(t.kind==="transfer"){const from=accountById(t.accountId),to=accountById(t.toAccountId);if(from)from.balance+=t.amount;if(to)to.balance-=t.amount}
-else{const acc=accountById(t.accountId);if(acc)acc.balance+=t.kind==="income"?-t.amount:t.amount}
+else if(!t.quickOnly){const acc=accountById(t.accountId);if(acc)acc.balance+=t.kind==="income"?-t.amount:t.amount}
 data.transactions=data.transactions.filter(x=>x.id!==tid);saveAndRender();
 }
 
