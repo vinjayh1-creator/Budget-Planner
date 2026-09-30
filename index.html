@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f8fa">
 <meta name="theme-color" content="#0f172a">
-<title>Budget Planner</title>
+<title>Budget Planner Yaniv</title>
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--border:#e5e7eb;--primary:#4f46e5;--soft:#eef2ff;--green:#059669;--red:#dc2626;--yellow:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}
@@ -789,7 +789,7 @@ ${months.map(d=>`<option value="${key(d)}" ${key(d)===selectedKey?"selected":""}
 <div class="snapshot-month">
 <div class="snapshot-month-head"><strong>${label(selectedDate)}</strong><span class="small">${selectedDate.toLocaleDateString("nl-NL",{month:"long",year:"numeric"})}</span></div>
 ${accounts.map(a=>`<div class="snapshot-row"><span>${a[1]}</span><div class="snapshot-input-wrap"><span>€</span><input type="number" min="0" step="0.01" inputmode="decimal" data-snapshot-month="${selectedKey}" data-snapshot-account="${a[0]}" value="${val(selectedKey,a[0])||""}" placeholder="0,00"></div></div>`).join("")}
-<button class="btn primary snapshot-save-btn" id="saveSnapshotBtn" style="margin-top:10px;width:100%">Opslaan</button>
+<button type="button" class="btn primary snapshot-save-btn" id="saveSnapshotBtn" style="margin-top:10px;width:100%">Opslaan</button>
 <div class="snapshot-total"><span>Totaal</span><strong>${euro(total)}</strong></div>
 ${prev?`<div class="snapshot-diff"><span>Verschil</span><strong class="${total-prevTotal>=0?"positive":"negative"}">${total-prevTotal>=0?"+":""}${euro(total-prevTotal)}</strong></div>`:""}
 </div>
@@ -801,16 +801,33 @@ $("snapshotMonthSelect").onchange=()=>{
 };
 
 $("saveSnapshotBtn").onclick=()=>{
-const inputs=document.querySelectorAll("[data-snapshot-month]");
-inputs.forEach(input=>{
-const k=input.dataset.snapshotMonth,id=input.dataset.snapshotAccount;
-data.accountSnapshots[k]=data.accountSnapshots[k]||{};
-data.accountSnapshots[k][id]=Number(String(input.value).replace(",", "."))||0;
-});
-saveData();
-renderAccounts();
-renderDashboard();
-notify("Stand opgeslagen.");
+  const saveButton=$("saveSnapshotBtn");
+  const inputs=document.querySelectorAll("[data-snapshot-month]");
+  const monthToSave=selectedSnapshotMonth;
+  if(!monthToSave){
+    notify("Kies eerst een maand.");
+    return;
+  }
+
+  data.accountSnapshots=data.accountSnapshots||{};
+  data.accountSnapshots[monthToSave]=data.accountSnapshots[monthToSave]||{};
+
+  inputs.forEach(input=>{
+    const id=input.dataset.snapshotAccount;
+    const raw=String(input.value||"").replace(",", ".").trim();
+    const value=raw===""?0:Number(raw);
+    data.accountSnapshots[monthToSave][id]=Number.isFinite(value)?value:0;
+  });
+
+  // Laat het dashboard direct dezelfde maand tonen als de zojuist opgeslagen stand.
+  const parts=monthToSave.split("-").map(Number);
+  if(parts.length===2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])){
+    currentMonth=new Date(parts[0],parts[1]-1,1);
+  }
+
+  persist();
+  render();
+  notify("Stand opgeslagen en dashboard bijgewerkt.");
 };
 lucide.createIcons();
 }
