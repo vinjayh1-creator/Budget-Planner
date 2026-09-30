@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f8fa">
 <meta name="theme-color" content="#0f172a">
-<title>Budget Planner Yaniv</title>
+<title>Budget Planner</title>
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--border:#e5e7eb;--primary:#4f46e5;--soft:#eef2ff;--green:#059669;--red:#dc2626;--yellow:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}
@@ -599,6 +599,8 @@ const toggleAllAmounts=()=>{
 };
 $("toggleAmountsVisibility").onclick=toggleAllAmounts;
 $("mobileToggleAmounts").onclick=toggleAllAmounts;
+$("prevMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()-1);render()};
+$("nextMonth").onclick=()=>{currentMonth.setMonth(currentMonth.getMonth()+1);render()};
 $("dashboardAdd").onclick=()=>{setActiveView("transactions");setTimeout(()=>$("description")?.focus(),0)};
 document.querySelectorAll("[data-quick-expense]").forEach(btn=>btn.onclick=()=>{
 const category=btn.dataset.quickExpense;
