@@ -9,7 +9,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f8fa">
 <meta name="theme-color" content="#0f172a">
-<title>Budget Planner Yaniv</title>
+<title>Budget Planner</title>
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
 :root{--bg:#f4f7fb;--card:#fff;--text:#172033;--muted:#6b7280;--border:#e5e7eb;--primary:#4f46e5;--soft:#eef2ff;--green:#059669;--red:#dc2626;--yellow:#d97706;--shadow:0 8px 30px rgba(15,23,42,.07)}
@@ -488,14 +488,18 @@ function renderDashboard(){
 const ts=monthTransactions();
 const income=ts.filter(t=>t.kind==="income").reduce((s,t)=>s+Number(t.amount),0);
 const expenses=ts.filter(t=>t.kind==="expense").reduce((s,t)=>s+Number(t.amount),0);
-const cash=data.accounts.reduce((s,a)=>s+Number(a.balance),0);
+const dashboardSnapshotKey=monthKey(currentMonth);
+const dashboardSnapshot=data.accountSnapshots?.[dashboardSnapshotKey]||{};
+const hasDashboardSnapshot=Object.prototype.hasOwnProperty.call(dashboardSnapshot,"acc1")||Object.prototype.hasOwnProperty.call(dashboardSnapshot,"acc4");
+const cash=hasDashboardSnapshot
+  ? Number(dashboardSnapshot.acc1||0)+Number(dashboardSnapshot.acc4||0)
+  : data.accounts.reduce((s,a)=>s+Number(a.balance),0);
 const net=income-expenses;
 const dpIncome=data.dealplug.entries.filter(e=>e.kind==="income").reduce((s,e)=>s+Number(e.amount),0);
 const dpCosts=data.dealplug.entries.filter(e=>e.kind==="expense").reduce((s,e)=>s+Number(e.amount),0);
 const dpBalance=Number(data.dealplug.opening)+dpIncome-dpCosts;
 const recent=[...ts].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,6);
-const dashboardSnapshotKey=monthKey(currentMonth);
-const dashboardSnapshot=data.accountSnapshots?.[dashboardSnapshotKey]||{};
+
 const dashboardSnapshotLabel=new Date(Number(dashboardSnapshotKey.slice(0,4)),Number(dashboardSnapshotKey.slice(5,7))-1,1).toLocaleDateString("nl-NL",{month:"long",year:"numeric"});
 $("dashboard").innerHTML=`
 <div class="topbar"><div><h1>Dashboard</h1><div class="subtitle">Je financiële overzicht</div></div>
