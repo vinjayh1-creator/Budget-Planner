@@ -1651,23 +1651,51 @@ $("transferRevolutAmount").onclick=()=>{
   const note=$("revolutTransferNote").value.trim();
   if(from===to){notify("Kies twee verschillende Revolut-rekeningen.");return}
   if(!Number.isFinite(n)||n<=0){notify("Vul een geldig bedrag in.");return}
+
   const month=monthKey(currentMonth);
   data.accountSnapshots=data.accountSnapshots||{};
   const snap=data.accountSnapshots[month]||(data.accountSnapshots[month]={});
   snap.revolutSubaccounts=snap.revolutSubaccounts||{};
   const label=x=>x==="private"?"Revolut privé":x==="dealplug"?"DealPlugNL":"Crypto / Aandelen";
+
+  // Revolut privé is historically also stored as account acc4. If the
+  // monthly snapshot does not yet contain acc4, use that account balance
+  // as the starting point and create the monthly snapshot from it.
+  if(from==="private" && !Object.prototype.hasOwnProperty.call(snap,"acc4")){
+    const legacyPrivate=accountById("acc4");
+    if(legacyPrivate) snap.acc4=Number(legacyPrivate.balance||0);
+  }
+  if(to==="private" && !Object.prototype.hasOwnProperty.call(snap,"acc4")){
+    const legacyPrivate=accountById("acc4");
+    if(legacyPrivate) snap.acc4=Number(legacyPrivate.balance||0);
+  }
+
   const get=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
   const fromBalance=get(from);
-  if(fromBalance<n){notify(`Onvoldoende saldo op ${label(from)}.`);return}
-  if(from==="private")snap.acc4=fromBalance-n;else snap.revolutSubaccounts[from]=fromBalance-n;
+  if(fromBalance<n){notify(`Onvoldoende saldo op ${label(from)}. Beschikbaar: ${euro(fromBalance)}.`);return}
+
   const toBalance=get(to);
-  if(to==="private")snap.acc4=toBalance+n;else snap.revolutSubaccounts[to]=toBalance+n;
+  if(from==="private") snap.acc4=fromBalance-n;
+  else snap.revolutSubaccounts[from]=fromBalance-n;
+  if(to==="private") snap.acc4=toBalance+n;
+  else snap.revolutSubaccounts[to]=toBalance+n;
+
   data.transactions.push({
-    id:uid(),description:note||`Overboeking ${label(from)} → ${label(to)}`,amount:n,date:today(),
-    category:"Overboeking Revolut",accountId:"revolut-subaccount",kind:"revolutTransfer",
-    fromTarget:from,toTarget:to,month
+    id:uid(),
+    description:note||`Overboeking ${label(from)} → ${label(to)}`,
+    amount:n,
+    date:today(),
+    category:"Overboeking Revolut",
+    accountId:"revolut-subaccount",
+    kind:"revolutTransfer",
+    fromTarget:from,
+    toTarget:to,
+    month
   });
-  persist();render();notify(`${euro(n)} overgeboekt van ${label(from)} naar ${label(to)}.`);
+
+  persist();
+  render();
+  notify(`${euro(n)} overgeboekt van ${label(from)} naar ${label(to)}.`);
 };
 document.querySelectorAll("[data-revolut-quick]").forEach(b=>b.onclick=()=>{
   changeRevolutSubaccountAmount(b.dataset.revolutQuick,500,"add","");
