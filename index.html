@@ -1661,18 +1661,9 @@ const sourceBalance=from.id==="acc2"
 if(sourceBalance<amount){notify(`Onvoldoende saldo op de bronrekening. Beschikbaar: ${euro(sourceBalance)}.`);return}
 from.balance-=amount;to.balance+=amount;
 
-// Houd ook de maandstand van het dashboard synchroon met de overboeking.
-// ABN Amro wordt in het dashboard als acc1 opgeslagen; Revolut privé als acc4.
-const transferSnap=data.accountSnapshots?.[month];
-if(transferSnap){
-  if(from.id==="acc2" && to.id==="acc4"){
-    transferSnap.acc1=Number(transferSnap.acc1||0)-amount;
-    transferSnap.acc4=Number(transferSnap.acc4||0)+amount;
-  }else if(from.id==="acc4" && to.id==="acc2"){
-    transferSnap.acc4=Number(transferSnap.acc4||0)-amount;
-    transferSnap.acc1=Number(transferSnap.acc1||0)+amount;
-  }
-}
+// Een overboeking verandert NOOIT de opgeslagen maandstand.
+// De maandstand is een vast historisch meetpunt; de actuele rekeningstanden
+// worden hierboven bijgewerkt en de overboeking blijft als transactie geregistreerd.
 data.transactions.push({id:uid(),description,amount,date,category:"Overboeking",accountId:from.id,toAccountId:to.id,kind:"transfer"});
 }else{
 const acc=accountById(accountId);
