@@ -1684,45 +1684,25 @@ if(val===null)return;
 const n=Number(val);if(!Number.isFinite(n)||n<=0){notify("Ongeldig bedrag.");return}
 if(t.kind==="revolutTransfer"){
   const snap=data.accountSnapshots?.[t.month];
-  if(snap){
-    snap.revolutSubaccounts=snap.revolutSubaccounts||{};
-    const getTarget=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
-    const fromBalance=getTarget(t.fromTarget)+t.amount;
-    const toBalance=Math.max(0,getTarget(t.toTarget)-t.amount);
-    if(t.fromTarget==="private")snap.acc4=fromBalance;else snap.revolutSubaccounts[t.fromTarget]=fromBalance;
-    if(t.toTarget==="private")snap.acc4=toBalance;else snap.revolutSubaccounts[t.toTarget]=toBalance;
-  }
-}else if(t.kind==="revolutTransfer"){notify("Een Revolut-overboeking kan niet via deze knop worden bewerkt. Verwijder hem en maak hem opnieuw aan.");return}
-if(t.kind==="revolutAdjustment"){
-  const snap=data.accountSnapshots?.[t.month];
   if(!snap){notify("Rekeningstand niet gevonden.");return}
   snap.revolutSubaccounts=snap.revolutSubaccounts||{};
-  const current=t.target==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[t.target]||0);
-  const oldEffect=t.direction==="add"?t.amount:-t.amount;
-  const newEffect=t.direction==="add"?n:-n;
-  const next=current-oldEffect+newEffect;
-  if(next<0){notify("Onvoldoende saldo voor deze wijziging.");return}
-  if(t.target==="private")snap.acc4=next;else snap.revolutSubaccounts[t.target]=next;
+  const getTarget=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
+  // First undo the old transfer.
+  const restoredFrom=getTarget(t.fromTarget)+t.amount;
+  const restoredTo=getTarget(t.toTarget)-t.amount;
+  if(restoredTo<0){notify("De opgeslagen rekeningstand klopt niet met deze overboeking.");return}
+  if(t.fromTarget==="private")snap.acc4=restoredFrom;else snap.revolutSubaccounts[t.fromTarget]=restoredFrom;
+  if(t.toTarget==="private")snap.acc4=restoredTo;else snap.revolutSubaccounts[t.toTarget]=restoredTo;
+  // Then apply the new amount.
+  const sourceAfter=getTarget(t.fromTarget)-n;
+  if(sourceAfter<0){notify("Onvoldoende saldo voor dit nieuwe bedrag.");return}
+  const targetAfter=getTarget(t.toTarget)+n;
+  if(t.fromTarget==="private")snap.acc4=sourceAfter;else snap.revolutSubaccounts[t.fromTarget]=sourceAfter;
+  if(t.toTarget==="private")snap.acc4=targetAfter;else snap.revolutSubaccounts[t.toTarget]=targetAfter;
   t.amount=n;
   persist();render();
   return;
 }
-if(t.kind==="transfer"){
-const from=accountById(t.accountId),to=accountById(t.toAccountId);
-if(!from||!to)return;
-from.balance+=t.amount;to.balance-=t.amount;
-if(from.balance<n){from.balance-=t.amount;to.balance+=t.amount;notify("Onvoldoende saldo voor deze wijziging.");return}
-from.balance-=n;to.balance+=n;
-}else{
-// Het wijzigen van een gewone transactie verandert alleen de transactie zelf,
-// niet de handmatig ingevoerde rekeningstand.
-t.amount=n;
-}
-t.amount=n;saveAndRender();
-}
-function deleteTransaction(tid){
-const t=data.transactions.find(x=>x.id===tid);if(!t)return;
-if(!confirm("Deze transactie verwijderen?"))return;
 if(t.kind==="revolutAdjustment"){
   const snap=data.accountSnapshots?.[t.month];
   if(snap){
@@ -1732,6 +1712,35 @@ if(t.kind==="revolutAdjustment"){
     if(t.target==="private")snap.acc4=Math.max(0,next);else snap.revolutSubaccounts[t.target]=Math.max(0,next);
   }
 }else if(t.kind==="transfer"){const from=accountById(t.accountId),to=accountById(t.toAccountId);if(from)from.balance+=t.amount;if(to)to.balance-=t.amount}
+data.transactions=data.transactions.filter(x=>x.id!==tid);saveAndRender();
+}
+
+function deleteTransaction(tid){
+const t=data.transactions.find(x=>x.id===tid);if(!t)return;
+if(!confirm("Deze transactie verwijderen?"))return;
+if(t.kind==="revolutTransfer"){
+  const snap=data.accountSnapshots?.[t.month];
+  if(snap){
+    snap.revolutSubaccounts=snap.revolutSubaccounts||{};
+    const getTarget=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
+    const fromBalance=getTarget(t.fromTarget)+Number(t.amount||0);
+    const toBalance=getTarget(t.toTarget)-Number(t.amount||0);
+    if(t.fromTarget==="private")snap.acc4=fromBalance;else snap.revolutSubaccounts[t.fromTarget]=fromBalance;
+    if(t.toTarget==="private")snap.acc4=toBalance;else snap.revolutSubaccounts[t.toTarget]=toBalance;
+  }
+}else if(t.kind==="revolutAdjustment"){
+  const snap=data.accountSnapshots?.[t.month];
+  if(snap){
+    snap.revolutSubaccounts=snap.revolutSubaccounts||{};
+    const current=t.target==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[t.target]||0);
+    const next=t.direction==="add"?current-t.amount:current+t.amount;
+    if(t.target==="private")snap.acc4=Math.max(0,next);else snap.revolutSubaccounts[t.target]=Math.max(0,next);
+  }
+}else if(t.kind==="transfer"){
+  const from=accountById(t.accountId),to=accountById(t.toAccountId);
+  if(from)from.balance+=t.amount;
+  if(to)to.balance-=t.amount;
+}
 data.transactions=data.transactions.filter(x=>x.id!==tid);saveAndRender();
 }
 
