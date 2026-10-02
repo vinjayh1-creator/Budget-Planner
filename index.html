@@ -1233,11 +1233,7 @@ lucide.createIcons();
 }
 
 function valForDashboard(type,snapshot){
-  if(type==="private"){
-    const subs=snapshot?.revolutSubaccounts;
-    if(subs && Object.prototype.hasOwnProperty.call(subs,"private")) return Number(subs.private||0);
-    return Number(snapshot?.acc4||0);
-  }
+  if(type==="private") return revolutPrivateBalance(snapshot);
   return 0;
 }
 
@@ -1786,13 +1782,22 @@ function dealplugNetForMonth(month){
 function dealplugBalanceForMonth(month,snapshot){
   return Number(snapshot?.revolutSubaccounts?.dealplug||0)+dealplugNetForMonth(month);
 }
+function revolutPrivateBalance(snapshot){
+  // Gebruik de maandstand als die expliciet is opgeslagen. Als die nog niet
+  // bestaat, gebruik dan het actuele Revolut-saldo uit de rekeninggegevens.
+  if(snapshot && Object.prototype.hasOwnProperty.call(snapshot,"acc4")){
+    return Number(snapshot.acc4||0);
+  }
+  const acc=accountById("acc4");
+  return Number(acc?.balance||0);
+}
 function revolutSubTotal(snapshot,month){
   const subs=snapshot?.revolutSubaccounts||{};
   const dealplug=month?dealplugBalanceForMonth(month,snapshot):Number(subs.dealplug||0);
   return dealplug+Number(subs.crypto||0);
 }
 function revolutTotal(snapshot,month){
-  return Number(snapshot?.acc4||0)+revolutSubTotal(snapshot,month);
+  return revolutPrivateBalance(snapshot)+revolutSubTotal(snapshot,month);
 }
 
 function renderAccounts(){
