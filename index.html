@@ -1578,7 +1578,22 @@ $("transactions").innerHTML=`
   <div class="section-title">Geld schuiven binnen Revolut</div>
   <div class="small" style="margin-bottom:12px">Verplaats geld tussen Revolut privé, DealPlugNL en Crypto / Aandelen. Het totaal van Revolut blijft gelijk.</div>
   <div class="revolut-balance-grid">
-    <div class="revolut-balance-tile"><div>ABN Amro</div><strong>${protectedEuro(Number(accountById("acc2")?.balance||0))}</strong></div>
+    <div class="revolut-balance-tile"><div>ABN Amro</div><strong>${protectedEuro((()=>{
+    const month=monthKey(currentMonth);
+    const snap=data.accountSnapshots?.[month]||{};
+    const base=Object.prototype.hasOwnProperty.call(snap,"acc1")?Number(snap.acc1||0):Number(accountById("acc2")?.balance||0);
+    const effect=data.transactions.filter(t=>monthKey(t.date)===month).reduce((sum,t)=>{
+      const n=Number(t.amount||0);
+      if(t.kind==="income" && (t.accountId==="acc1"||t.accountId==="acc2")) return sum+n;
+      if(t.kind==="expense" && (t.accountId==="acc1"||t.accountId==="acc2")) return sum-n;
+      if(t.kind==="transfer"){
+        if(t.accountId==="acc1"||t.accountId==="acc2") sum-=n;
+        if(t.toAccountId==="acc1"||t.toAccountId==="acc2") sum+=n;
+      }
+      return sum;
+    },0);
+    return base+effect;
+  })())}</strong></div>
     <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(Number(accountById("acc4")?.balance||0))}</strong></div>
     <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
     <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
