@@ -1541,6 +1541,11 @@ $("transactions").innerHTML=`
 <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
   <div class="section-title">Geld schuiven binnen Revolut</div>
   <div class="small" style="margin-bottom:12px">Verplaats geld tussen Revolut privé, DealPlugNL en Crypto / Aandelen. Het totaal van Revolut blijft gelijk.</div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px">
+    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">Revolut privé</div><strong>${protectedEuro(revolutPrivateBalance(data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
+    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
+    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
+  </div>
   <div class="form-grid">
     <div class="field">
       <label>Van rekening</label>
