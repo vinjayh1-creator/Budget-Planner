@@ -1636,7 +1636,29 @@ if(!date){notify("Kies een datum.");return}
 if(kind==="transfer"){
 const from=accountById(accountId),to=accountById($("transferTo").value);
 if(!from||!to||from.id===to.id){notify("Kies twee verschillende rekeningen.");return}
-if(from.balance<amount){notify("Onvoldoende saldo op de bronrekening.");return}
+
+// Gebruik voor de saldo-check dezelfde maandstanden als het dashboard.
+// ABN Amro wordt in de maandstanden als acc1 opgeslagen, terwijl de
+// transactiekeuze acc2 gebruikt. Revolut privé gebruikt acc4.
+const month=monthKey(new Date(date));
+const snap=data.accountSnapshots?.[month];
+const transferEffect=(ids)=>data.transactions.filter(t=>monthKey(t.date)===month).reduce((sum,t)=>{
+  const n=Number(t.amount||0);
+  if(t.kind==="income" && ids.includes(t.accountId)) return sum+n;
+  if(t.kind==="expense" && ids.includes(t.accountId)) return sum-n;
+  if(t.kind==="transfer"){
+    if(ids.includes(t.accountId)) sum-=n;
+    if(ids.includes(t.toAccountId)) sum+=n;
+  }
+  return sum;
+},0);
+const sourceBalance=from.id==="acc2"
+  ? (snap && Object.prototype.hasOwnProperty.call(snap,"acc1") ? Number(snap.acc1||0)+transferEffect(["acc1","acc2"]) : Number(from.balance||0))
+  : from.id==="acc4"
+    ? (snap ? revolutPrivateBalance(snap)+transferEffect(["acc4","acc3"]) : Number(from.balance||0))
+    : Number(from.balance||0);
+
+if(sourceBalance<amount){notify(`Onvoldoende saldo op de bronrekening. Beschikbaar: ${euro(sourceBalance)}.`);return}
 from.balance-=amount;to.balance+=amount;
 data.transactions.push({id:uid(),description,amount,date,category:"Overboeking",accountId:from.id,toAccountId:to.id,kind:"transfer"});
 }else{
