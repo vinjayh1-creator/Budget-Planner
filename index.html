@@ -1316,12 +1316,17 @@ function displayedAccountBalances(month){
   // worden vanuit hun maandstand + mutaties berekend.
   const abnAccount=accountById("acc2");
   const revolutAccount=accountById("acc4");
+  const realCurrentMonth=monthKey(new Date());
+  const isCurrentMonth=key===realCurrentMonth;
 
-  const abn=abnAccount
+  // Voor de huidige maand gebruiken we de actuele rekeningstatus.
+  // Voor historische maanden gebruiken we juist de opgeslagen maandstand.
+  // Zo overschrijft een actuele rekeningstand nooit een eerder opgeslagen maandstand.
+  const abn=isCurrentMonth && abnAccount
     ? Number(abnAccount.balance||0)
     : Number(snap.acc1||0);
 
-  const privateRevolut=revolutAccount
+  const privateRevolut=isCurrentMonth && revolutAccount
     ? Number(revolutAccount.balance||0)
     : Number(snap.acc4||0);
 
@@ -2049,7 +2054,16 @@ $("saveSnapshotBtn").onclick=()=>{
   document.querySelectorAll("[data-snapshot-account]").forEach(input=>{
     const raw=String(input.value||"").replace(",", ".").trim();
     const value=raw===""?0:Number(raw);
-    snap[input.dataset.snapshotAccount]=Number.isFinite(value)?value:0;
+    const cleanValue=Number.isFinite(value)?value:0;
+    snap[input.dataset.snapshotAccount]=cleanValue;
+
+    // Bij het opslaan van de stand van de huidige maand moet die ingevoerde stand
+    // ook de actuele account-state worden. Dashboard en Transacties lezen daarna
+    // exact dezelfde bron voor het huidige saldo.
+    if(monthToSave===monthKey(new Date()) && input.dataset.snapshotAccount==="acc1") {
+      const abnAccount=accountById("acc2");
+      if(abnAccount) abnAccount.balance=cleanValue;
+    }
   });
 
   snap.revolutSubaccounts=snap.revolutSubaccounts||{};
@@ -2058,9 +2072,14 @@ $("saveSnapshotBtn").onclick=()=>{
     const value=raw===""?0:Number(raw);
     const id=input.dataset.snapshotSubaccount;
     if(id==="private") {
-      // Revolut privé is the main Revolut account and is stored as acc4,
-      // so it is used consistently by the dashboard and Revolut total.
-      snap.acc4=Number.isFinite(value)?value:0;
+      // Revolut privé is de actuele hoofdrekening. Bij de huidige maand
+      // synchroniseren we de ingevoerde stand ook naar acc4.
+      const cleanValue=Number.isFinite(value)?value:0;
+      snap.acc4=cleanValue;
+      if(monthToSave===monthKey(new Date())) {
+        const revolutAccount=accountById("acc4");
+        if(revolutAccount) revolutAccount.balance=cleanValue;
+      }
     } else if(id==="dealplug") {
       snap.revolutSubaccounts[id]=Number.isFinite(value)?value-dealplugNetForMonth(monthToSave):0;
     } else {
