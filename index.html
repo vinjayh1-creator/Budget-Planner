@@ -1693,27 +1693,19 @@ const transferEffect=(ids)=>data.transactions.filter(t=>monthKey(t.date)===month
   }
   return sum;
 },0);
-const sourceBalance=(()=>{
-  const monthKeyForTransfer=month;
-  const monthSnap=snap||{};
-  const effect=(ids)=>data.transactions.filter(t=>monthKey(t.date)===monthKeyForTransfer).reduce((sum,t)=>{
-    const n=Number(t.amount||0);
-    if(t.kind==="income" && ids.includes(t.accountId)) return sum+n;
-    if(t.kind==="expense" && ids.includes(t.accountId)) return sum-n;
-    if(t.kind==="transfer"){
-      if(ids.includes(t.accountId)) sum-=n;
-      if(ids.includes(t.toAccountId)) sum+=n;
-    }
-    return sum;
-  },0);
-  if(from.id==="acc2") return Object.prototype.hasOwnProperty.call(monthSnap,"acc1")
-    ? Number(monthSnap.acc1||0)+effect(["acc1","acc2"])
-    : Number(from.balance||0)+effect([from.id]);
-  if(from.id==="acc4") return Object.prototype.hasOwnProperty.call(monthSnap,"acc4")
-    ? Number(monthSnap.acc4||0)+effect(["acc4"])
-    : Number(from.balance||0)+effect([from.id]);
-  return Number(from.balance||0);
-})();
+// Gebruik exact hetzelfde actuele saldo als de rekeningtegels op het
+// dashboard/transacties. Daardoor worden eerdere overboekingen meteen
+// meegenomen in de volgende saldo-check.
+const balancesBeforeTransfer=displayedAccountBalances(month);
+const sourceBalance=from.id==="acc2"
+  ? Number(balancesBeforeTransfer.abn||0)
+  : from.id==="acc4"
+    ? Number(balancesBeforeTransfer.privateRevolut||0)
+    : Number(from.balance||0);
+if(sourceBalance+0.000001<amount){
+  notify(`Overboeking geweigerd: onvoldoende saldo op ${from.name}. Beschikbaar: ${euro(sourceBalance)}.`);
+  return;
+}
 
 from.balance-=amount;
 to.balance+=amount;
@@ -1790,11 +1782,19 @@ $("transferRevolutAmount").onclick=()=>{
     if(legacyPrivate) snap.acc4=Number(legacyPrivate.balance||0);
   }
 
-  const get=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
-  const fromBalance=get(from);
-  if(fromBalance<n){notify(`Onvoldoende saldo op ${label(from)}. Beschikbaar: ${euro(fromBalance)}.`);return}
+  // Gebruik het actuele weergegeven saldo, inclusief eerdere ABN ↔ Revolut
+  // overboekingen van deze maand. Dit voorkomt dat alleen de oorspronkelijke
+  // maandstand (bijv. €20) wordt gebruikt nadat er al €50 is bijgekomen.
+  const displayed=displayedAccountBalances(month);
+  const getCurrent=x=>x==="private"
+    ? Number(displayed.privateRevolut||0)
+    : x==="dealplug"
+      ? Number(displayed.dealplug||0)
+      : Number(displayed.crypto||0);
+  const fromBalance=getCurrent(from);
+  if(fromBalance+0.000001<n){notify(`Overboeking geweigerd: onvoldoende saldo op ${label(from)}. Beschikbaar: ${euro(fromBalance)}.`);return}
 
-  const toBalance=get(to);
+  const toBalance=getCurrent(to);
   if(from==="private") snap.acc4=fromBalance-n;
   else snap.revolutSubaccounts[from]=fromBalance-n;
   if(to==="private") snap.acc4=toBalance+n;
