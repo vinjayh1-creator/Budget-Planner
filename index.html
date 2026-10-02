@@ -1674,8 +1674,16 @@ const sourceBalance=from.id==="acc2"
     ? (snap ? revolutPrivateBalance(snap)+transferEffect(["acc4","acc3"]) : Number(from.balance||0))
     : Number(from.balance||0);
 
-if(sourceBalance<amount){notify(`Onvoldoende saldo op de bronrekening. Beschikbaar: ${euro(sourceBalance)}.`);return}
-from.balance-=amount;to.balance+=amount;
+if(!Number.isFinite(sourceBalance) || sourceBalance < amount){
+  notify(`Overboeking geweigerd: onvoldoende saldo op ${from.name}. Beschikbaar: ${euro(Math.max(0,sourceBalance||0))}.`);
+  return;
+}
+if(amount > Math.max(0,sourceBalance)){
+  notify(`Overboeking geweigerd: je kunt niet meer overboeken dan het beschikbare saldo van ${euro(Math.max(0,sourceBalance))}.`);
+  return;
+}
+from.balance-=amount;
+to.balance+=amount;
 
 // Een overboeking verandert NOOIT de opgeslagen maandstand.
 // De maandstand is een vast historisch meetpunt; de actuele rekeningstanden
