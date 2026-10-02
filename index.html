@@ -1344,7 +1344,7 @@ $("dashboard").innerHTML=`
 <div class="amount">${protectedEuro(dashboardRevolutBalance)}</div>
 </summary>
 <div class="dashboard-revolut-details-inner">
-  <div class="small dashboard-subrow"><span>Revolut privé</span><strong>${protectedEuro(valForDashboard("private",dashboardSnapshot))}</strong></div>
+  <div class="small dashboard-subrow"><span>Revolut privé</span><strong>${protectedEuro(revolutPrivateCurrentBalance(dashboardSnapshotKey))}</strong></div>
   <div class="small dashboard-subrow"><span>DealPlugNL</span><strong>${protectedEuro(dealplugBalanceForMonth(dashboardSnapshotKey,dashboardSnapshot))}</strong></div>
   <div class="small dashboard-subrow"><span>Crypto / Aandelen</span><strong>${protectedEuro(Number(dashboardSnapshot.revolutSubaccounts?.crypto||0))}</strong></div>
 </div>
@@ -1594,22 +1594,7 @@ $("transactions").innerHTML=`
     },0);
     return base+effect;
   })())}</strong></div>
-    <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro((()=>{
-    const month=monthKey(currentMonth);
-    const snap=data.accountSnapshots?.[month]||{};
-    const base=revolutPrivateBalance(snap);
-    const effect=data.transactions.filter(t=>monthKey(t.date)===month).reduce((sum,t)=>{
-      const n=Number(t.amount||0);
-      if(t.kind==="income" && (t.accountId==="acc4"||t.accountId==="acc3")) return sum+n;
-      if(t.kind==="expense" && (t.accountId==="acc4"||t.accountId==="acc3")) return sum-n;
-      if(t.kind==="transfer"){
-        if(t.accountId==="acc4"||t.accountId==="acc3") sum-=n;
-        if(t.toAccountId==="acc4"||t.toAccountId==="acc3") sum+=n;
-      }
-      return sum;
-    },0);
-    return base+effect;
-  })())}</strong></div>
+    <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(revolutPrivateCurrentBalance(monthKey(currentMonth)))}</strong></div>
     <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
     <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
   </div>
@@ -1888,6 +1873,23 @@ function dealplugNetForMonth(month){
 function dealplugBalanceForMonth(month,snapshot){
   return Number(snapshot?.revolutSubaccounts?.dealplug||0)+dealplugNetForMonth(month);
 }
+function revolutPrivateCurrentBalance(month){
+  const key=month||monthKey(currentMonth);
+  const snap=data.accountSnapshots?.[key]||{};
+  const base=revolutPrivateBalance(snap);
+  const effect=data.transactions.filter(t=>monthKey(t.date)===key).reduce((sum,t)=>{
+    const n=Number(t.amount||0);
+    if(t.kind==="income" && t.accountId==="acc4") return sum+n;
+    if(t.kind==="expense" && t.accountId==="acc4") return sum-n;
+    if(t.kind==="transfer"){
+      if(t.accountId==="acc4") sum-=n;
+      if(t.toAccountId==="acc4") sum+=n;
+    }
+    return sum;
+  },0);
+  return base+effect;
+}
+
 function revolutPrivateBalance(snapshot){
   // Gebruik de maandstand als die expliciet is opgeslagen. Als die nog niet
   // bestaat, gebruik dan het actuele Revolut-saldo uit de rekeninggegevens.
