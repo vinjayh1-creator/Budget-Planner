@@ -1310,49 +1310,42 @@ function displayedAccountBalances(month){
   const key=month||monthKey(currentMonth);
   const snap=data.accountSnapshots?.[key]||{};
 
-  // De maandstand is de historische basis. Oude versies van de app hebben
-  // Revolut-overboekingen echter rechtstreeks in de snapshot geschreven.
-  // Daarom draaien we uitsluitend die oude transfer-effecten eerst terug,
-  // zodat we altijd vanuit de echte maandbasis rekenen.
-  const base={
-    acc4:revolutPrivateBalance(snap),
-    dealplug:Number(snap.revolutSubaccounts?.dealplug||0),
-    crypto:Number(snap.revolutSubaccounts?.crypto||0)
-  };
+  // Actuele saldi zijn leidend voor het scherm. De maandstand blijft alleen
+  // de historische referentie en wordt nooit aangepast door overboekingen.
+  // ABN en Revolut privé hebben een echte account-balance; DealPlug/Crypto
+  // worden vanuit hun maandstand + mutaties berekend.
+  const abnAccount=accountById("acc2");
+  const revolutAccount=accountById("acc4");
+
+  const abn=abnAccount
+    ? Number(abnAccount.balance||0)
+    : Number(snap.acc1||0);
+
+  const privateRevolut=revolutAccount
+    ? Number(revolutAccount.balance||0)
+    : Number(snap.acc4||0);
+
   const monthTransfers=(Array.isArray(data.transactions)?data.transactions:[])
     .filter(t=>t.kind==="revolutTransfer" && (t.month===key || monthKey(t.date)===key));
 
-  // Herstel de historische basis van snapshots die door een oudere versie
-  // al met deze transfers waren aangepast.
-  monthTransfers.forEach(t=>{
-    const n=Number(t.amount||0);
-    if(t.fromTarget==="private") base.acc4+=n;
-    else if(t.fromTarget==="dealplug") base.dealplug+=n;
-    else if(t.fromTarget==="crypto") base.crypto+=n;
-    if(t.toTarget==="private") base.acc4-=n;
-    else if(t.toTarget==="dealplug") base.dealplug-=n;
-    else if(t.toTarget==="crypto") base.crypto-=n;
-  });
+  const dealplugBase=Number(snap.revolutSubaccounts?.dealplug||0);
+  const cryptoBase=Number(snap.revolutSubaccounts?.crypto||0);
 
-  // Daarna passen we alle Revolut-overboekingen opnieuw toe. Zo is dit altijd
-  // het actuele saldo, ongeacht hoeveel overboekingen er eerder zijn gedaan.
-  monthTransfers.forEach(t=>{
+  const dealplugTransfers=monthTransfers.reduce((sum,t)=>{
     const n=Number(t.amount||0);
-    if(t.fromTarget==="private") base.acc4-=n;
-    else if(t.fromTarget==="dealplug") base.dealplug-=n;
-    else if(t.fromTarget==="crypto") base.crypto-=n;
-    if(t.toTarget==="private") base.acc4+=n;
-    else if(t.toTarget==="dealplug") base.dealplug+=n;
-    else if(t.toTarget==="crypto") base.crypto+=n;
-  });
+    if(t.fromTarget==="dealplug") return sum-n;
+    if(t.toTarget==="dealplug") return sum+n;
+    return sum;
+  },0);
+  const cryptoTransfers=monthTransfers.reduce((sum,t)=>{
+    const n=Number(t.amount||0);
+    if(t.fromTarget==="crypto") return sum-n;
+    if(t.toTarget==="crypto") return sum+n;
+    return sum;
+  },0);
 
-  const abnBase=Object.prototype.hasOwnProperty.call(snap,"acc1")
-    ? Number(snap.acc1||0)
-    : Number(accountById("acc2")?.balance||0);
-  const abn=abnBase+monthlyAccountEffect(key,["acc1","acc2"]);
-  const privateRevolut=base.acc4+monthlyAccountEffect(key,["acc4","acc3"]);
-  const dealplug=base.dealplug+dealplugNetForMonth(key);
-  const crypto=base.crypto;
+  const dealplug=dealplugBase+dealplugTransfers+dealplugNetForMonth(key);
+  const crypto=cryptoBase+cryptoTransfers;
   const revolut=privateRevolut+dealplug+crypto;
 
   return {abn,privateRevolut,dealplug,crypto,revolut,total:abn+revolut};
@@ -1814,6 +1807,12 @@ $("transferRevolutAmount").onclick=()=>{
   const fromBalance=getCurrent(from);
   if(fromBalance+0.000001<n){notify(`Overboeking geweigerd: onvoldoende saldo op ${label(from)}. Beschikbaar: ${euro(fromBalance)}.`);return}
 
+  // Werk het actuele privé-saldo direct bij. DealPlug/Crypto worden via
+  // de transactiehistorie berekend; de historische maandstand blijft intact.
+  const privateAccount=accountById("acc4");
+  if(from==="private" && privateAccount) privateAccount.balance-=n;
+  if(to==="private" && privateAccount) privateAccount.balance+=n;
+
   data.transactions.push({
     id:uid(),
     description:note||`Overboeking ${label(from)} → ${label(to)}`,
@@ -1845,22 +1844,22 @@ const val=prompt("Nieuw bedrag (€):",String(t.amount));
 if(val===null)return;
 const n=Number(val);if(!Number.isFinite(n)||n<=0){notify("Ongeldig bedrag.");return}
 if(t.kind==="revolutTransfer"){
-  const snap=data.accountSnapshots?.[t.month];
-  if(!snap){notify("Rekeningstand niet gevonden.");return}
-  snap.revolutSubaccounts=snap.revolutSubaccounts||{};
-  const getTarget=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
-  // First undo the old transfer.
-  const restoredFrom=getTarget(t.fromTarget)+t.amount;
-  const restoredTo=getTarget(t.toTarget)-t.amount;
-  if(restoredTo<0){notify("De opgeslagen rekeningstand klopt niet met deze overboeking.");return}
-  if(t.fromTarget==="private")snap.acc4=restoredFrom;else snap.revolutSubaccounts[t.fromTarget]=restoredFrom;
-  if(t.toTarget==="private")snap.acc4=restoredTo;else snap.revolutSubaccounts[t.toTarget]=restoredTo;
-  // Then apply the new amount.
-  const sourceAfter=getTarget(t.fromTarget)-n;
-  if(sourceAfter<0){notify("Onvoldoende saldo voor dit nieuwe bedrag.");return}
-  const targetAfter=getTarget(t.toTarget)+n;
-  if(t.fromTarget==="private")snap.acc4=sourceAfter;else snap.revolutSubaccounts[t.fromTarget]=sourceAfter;
-  if(t.toTarget==="private")snap.acc4=targetAfter;else snap.revolutSubaccounts[t.toTarget]=targetAfter;
+  const privateAccount=accountById("acc4");
+  // Eerst de oude beweging terugdraaien op het actuele saldo.
+  if(privateAccount){
+    if(t.fromTarget==="private") privateAccount.balance+=Number(t.amount||0);
+    if(t.toTarget==="private") privateAccount.balance-=Number(t.amount||0);
+  }
+  // Controleer daarna het nieuwe bedrag vanuit de herstelde actuele bron.
+  const displayed=displayedAccountBalances(t.month);
+  const sourceBefore=t.fromTarget==="private"
+    ? Number(privateAccount?.balance||0)
+    : t.fromTarget==="dealplug" ? Number(displayed.dealplug||0) : Number(displayed.crypto||0);
+  if(sourceBefore<n){notify("Onvoldoende saldo voor dit nieuwe bedrag.");return}
+  if(privateAccount){
+    if(t.fromTarget==="private") privateAccount.balance-=n;
+    if(t.toTarget==="private") privateAccount.balance+=n;
+  }
   t.amount=n;
   persist();render();
   return;
@@ -1881,14 +1880,10 @@ function deleteTransaction(tid){
 const t=data.transactions.find(x=>x.id===tid);if(!t)return;
 if(!confirm("Deze transactie verwijderen?"))return;
 if(t.kind==="revolutTransfer"){
-  const snap=data.accountSnapshots?.[t.month];
-  if(snap){
-    snap.revolutSubaccounts=snap.revolutSubaccounts||{};
-    const getTarget=x=>x==="private"?Number(snap.acc4||0):Number(snap.revolutSubaccounts[x]||0);
-    const fromBalance=getTarget(t.fromTarget)+Number(t.amount||0);
-    const toBalance=getTarget(t.toTarget)-Number(t.amount||0);
-    if(t.fromTarget==="private")snap.acc4=fromBalance;else snap.revolutSubaccounts[t.fromTarget]=fromBalance;
-    if(t.toTarget==="private")snap.acc4=toBalance;else snap.revolutSubaccounts[t.toTarget]=toBalance;
+  const privateAccount=accountById("acc4");
+  if(privateAccount){
+    if(t.fromTarget==="private") privateAccount.balance+=Number(t.amount||0);
+    if(t.toTarget==="private") privateAccount.balance-=Number(t.amount||0);
   }
 }else if(t.kind==="revolutAdjustment"){
   const snap=data.accountSnapshots?.[t.month];
