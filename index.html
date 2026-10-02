@@ -1578,6 +1578,7 @@ $("transactions").innerHTML=`
   <div class="section-title">Geld schuiven binnen Revolut</div>
   <div class="small" style="margin-bottom:12px">Verplaats geld tussen Revolut privé, DealPlugNL en Crypto / Aandelen. Het totaal van Revolut blijft gelijk.</div>
   <div class="revolut-balance-grid">
+    <div class="revolut-balance-tile"><div>ABN Amro</div><strong>${protectedEuro(Number(accountById("acc2")?.balance||0))}</strong></div>
     <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(revolutPrivateBalance(data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
     <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
     <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
