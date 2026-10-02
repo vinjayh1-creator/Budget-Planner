@@ -245,6 +245,42 @@ h1{letter-spacing:-.035em}
 .snapshot-total strong,.snapshot-diff strong{font-size:13px}
 @media(max-width:700px){.account-snapshots-card{width:100%}}
 
+/* Compacte Revolut-standen bij Transacties */
+.revolut-balance-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  margin-bottom:14px;
+}
+.revolut-balance-tile{
+  padding:8px 9px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface-2,#f8fafc);
+  min-width:0;
+}
+.revolut-balance-tile div{
+  font-size:11px;
+  line-height:1.2;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.revolut-balance-tile strong{
+  display:block;
+  margin-top:3px;
+  font-size:14px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+@media(max-width:700px){
+  .revolut-balance-grid{gap:5px;margin-bottom:12px}
+  .revolut-balance-tile{padding:7px 6px;border-radius:9px}
+  .revolut-balance-tile div{font-size:9px}
+  .revolut-balance-tile strong{font-size:12px;margin-top:2px}
+}
+
 /* Consistente ruimte rond DealPlugNL */
 #dashboard .dealplug-dashboard-card {
   margin-top: 16px !important;
@@ -1541,10 +1577,10 @@ $("transactions").innerHTML=`
 <div style="margin-top:18px;padding-top:18px;border-top:1px solid var(--border)">
   <div class="section-title">Geld schuiven binnen Revolut</div>
   <div class="small" style="margin-bottom:12px">Verplaats geld tussen Revolut privé, DealPlugNL en Crypto / Aandelen. Het totaal van Revolut blijft gelijk.</div>
-  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px">
-    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">Revolut privé</div><strong>${protectedEuro(revolutPrivateBalance(data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
-    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
-    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,#f8fafc)"><div class="small">Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
+  <div class="revolut-balance-grid">
+    <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(revolutPrivateBalance(data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
+    <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
+    <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
   </div>
   <div class="form-grid">
     <div class="field">
