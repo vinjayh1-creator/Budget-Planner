@@ -1920,7 +1920,11 @@ $("saveSnapshotBtn").onclick=()=>{
     const raw=String(input.value||"").replace(",", ".").trim();
     const value=raw===""?0:Number(raw);
     const id=input.dataset.snapshotSubaccount;
-    if(id==="dealplug") {
+    if(id==="private") {
+      // Revolut privé is the main Revolut account and is stored as acc4,
+      // so it is used consistently by the dashboard and Revolut total.
+      snap.acc4=Number.isFinite(value)?value:0;
+    } else if(id==="dealplug") {
       snap.revolutSubaccounts[id]=Number.isFinite(value)?value-dealplugNetForMonth(monthToSave):0;
     } else {
       snap.revolutSubaccounts[id]=Number.isFinite(value)?value:0;
