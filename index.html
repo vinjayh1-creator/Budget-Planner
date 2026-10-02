@@ -1082,6 +1082,25 @@ nav button.active{background:var(--soft);color:var(--primary);}
 #dashboard .dashboard-crypto-pokemon-card .section-title svg{width:18px;height:18px;color:var(--primary);}
 @media(max-width:700px){#dashboard .dashboard-crypto-pokemon-card{margin-top:16px !important;} .dashboard-investment-grid{grid-template-columns:1fr 1fr !important;}}
 </style>
+
+<style id="transaction-account-tiles-dark-fix">
+/* Donkere modus: rekeningtegels bij Transacties */
+[data-theme="dark"] #transactions .revolut-balance-grid .revolut-balance-tile {
+  background:var(--card) !important;
+  color:var(--text) !important;
+  border-color:var(--border) !important;
+}
+[data-theme="dark"] #transactions .revolut-balance-grid .revolut-balance-tile * {
+  color:var(--text) !important;
+}
+[data-theme="dark"] #transactions .revolut-balance-grid .revolut-balance-tile .small {
+  color:var(--muted) !important;
+}
+[data-theme="dark"] #transactions .revolut-balance-grid .revolut-balance-tile .stat-value,
+[data-theme="dark"] #transactions .revolut-balance-grid .revolut-balance-tile strong {
+  color:var(--text) !important;
+}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1273,6 +1292,36 @@ function valForDashboard(type,snapshot){
   return 0;
 }
 
+function monthlyAccountEffect(month,ids){
+  const ts=Array.isArray(data.transactions)?data.transactions:[];
+  return ts.filter(t=>monthKey(t.date)===month).reduce((sum,t)=>{
+    const amount=Number(t.amount||0);
+    if(t.kind==="income" && ids.includes(t.accountId)) return sum+amount;
+    if(t.kind==="expense" && ids.includes(t.accountId)) return sum-amount;
+    if(t.kind==="transfer"){
+      if(ids.includes(t.accountId)) sum-=amount;
+      if(ids.includes(t.toAccountId)) sum+=amount;
+    }
+    return sum;
+  },0);
+}
+
+function displayedAccountBalances(month){
+  const key=month||monthKey(currentMonth);
+  const snap=data.accountSnapshots?.[key]||{};
+  const abnBase=Object.prototype.hasOwnProperty.call(snap,"acc1")
+    ? Number(snap.acc1||0)
+    : Number(accountById("acc2")?.balance||0);
+  const abn=abnBase+monthlyAccountEffect(key,["acc1","acc2"]);
+
+  const privateRevolut=revolutPrivateBalance(snap)+monthlyAccountEffect(key,["acc4","acc3"]);
+  const dealplug=dealplugBalanceForMonth(key,snap);
+  const crypto=Number(snap.revolutSubaccounts?.crypto||0);
+  const revolut=privateRevolut+dealplug+crypto;
+
+  return {abn,privateRevolut,dealplug,crypto,revolut,total:abn+revolut};
+}
+
 function renderDashboard(){
 const ts=monthTransactions();
 const incomeTransactions=ts.filter(t=>t.kind==="income").reduce((s,t)=>s+Number(t.amount),0);
@@ -1297,18 +1346,9 @@ const cash=accountStand+(incomeTransactions-expenseTransactions);
 const net=income-expenses;
 // Laat gewone transacties ook direct terugkomen in de weergegeven rekeningstand.
 // Het maandelijkse snapshot blijft het uitgangspunt; de transacties van deze maand worden daarop toegepast.
-const accountMonthEffect=(ids)=>ts.reduce((sum,t)=>{
-  const amount=Number(t.amount||0);
-  if(t.kind==="income" && ids.includes(t.accountId)) return sum+amount;
-  if(t.kind==="expense" && ids.includes(t.accountId)) return sum-amount;
-  if(t.kind==="transfer"){
-    if(ids.includes(t.accountId)) sum-=amount;
-    if(ids.includes(t.toAccountId)) sum+=amount;
-  }
-  return sum;
-},0);
-const dashboardAbnBalance=Number(dashboardSnapshot.acc1||0)+accountMonthEffect(["acc1","acc2"]);
-const dashboardRevolutBalance=revolutTotal(dashboardSnapshot,dashboardSnapshotKey)+accountMonthEffect(["acc4","acc3"]);
+const displayedBalances=displayedAccountBalances(dashboardSnapshotKey);
+const dashboardAbnBalance=displayedBalances.abn;
+const dashboardRevolutBalance=displayedBalances.revolut;
 const dealplugEntries=Array.isArray(data.dealplug?.entries)?data.dealplug.entries:[];
 const dpIncome=dealplugEntries.filter(e=>e.kind==="income").reduce((s,e)=>s+Number(e.amount||0),0);
 const dpCosts=dealplugEntries.filter(e=>e.kind==="expense"||e.kind==="cost"||e.kind==="kosten").reduce((s,e)=>s+Number(e.amount||0),0);
@@ -1578,25 +1618,10 @@ $("transactions").innerHTML=`
   <div class="section-title">Geld schuiven binnen Revolut</div>
   <div class="small" style="margin-bottom:12px">Verplaats geld tussen Revolut privé, DealPlugNL en Crypto / Aandelen. Het totaal van Revolut blijft gelijk.</div>
   <div class="revolut-balance-grid">
-    <div class="revolut-balance-tile"><div>ABN Amro</div><strong>${protectedEuro((()=>{
-    const month=monthKey(currentMonth);
-    const snap=data.accountSnapshots?.[month]||{};
-    const base=Object.prototype.hasOwnProperty.call(snap,"acc1")?Number(snap.acc1||0):Number(accountById("acc2")?.balance||0);
-    const effect=data.transactions.filter(t=>monthKey(t.date)===month).reduce((sum,t)=>{
-      const n=Number(t.amount||0);
-      if(t.kind==="income" && (t.accountId==="acc1"||t.accountId==="acc2")) return sum+n;
-      if(t.kind==="expense" && (t.accountId==="acc1"||t.accountId==="acc2")) return sum-n;
-      if(t.kind==="transfer"){
-        if(t.accountId==="acc1"||t.accountId==="acc2") sum-=n;
-        if(t.toAccountId==="acc1"||t.toAccountId==="acc2") sum+=n;
-      }
-      return sum;
-    },0);
-    return base+effect;
-  })())}</strong></div>
-    <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(revolutPrivateCurrentBalance(monthKey(currentMonth)))}</strong></div>
-    <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(dealplugBalanceForMonth(monthKey(currentMonth),data.accountSnapshots?.[monthKey(currentMonth)]||{}))}</strong></div>
-    <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(Number((data.accountSnapshots?.[monthKey(currentMonth)]||{}).revolutSubaccounts?.crypto||0))}</strong></div>
+    <div class="revolut-balance-tile"><div>ABN Amro</div><strong>${protectedEuro(displayedAccountBalances(monthKey(currentMonth)).abn)}</strong></div>
+    <div class="revolut-balance-tile"><div>Revolut privé</div><strong>${protectedEuro(displayedAccountBalances(monthKey(currentMonth)).privateRevolut)}</strong></div>
+    <div class="revolut-balance-tile"><div>DealPlugNL</div><strong>${protectedEuro(displayedAccountBalances(monthKey(currentMonth)).dealplug)}</strong></div>
+    <div class="revolut-balance-tile"><div>Crypto / Aandelen</div><strong>${protectedEuro(displayedAccountBalances(monthKey(currentMonth)).crypto)}</strong></div>
   </div>
   <div class="form-grid">
     <div class="field">
