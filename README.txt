@@ -1,0 +1,1 @@
+Upload index.html, manifest.json and the icons folder to GitHub. Then remove the old iPhone shortcut and add the website to the Home Screen again.
